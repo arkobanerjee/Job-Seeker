@@ -18,6 +18,11 @@ The dashboard token is kept only in browser memory, so sign in again after a ref
 
 Store these locally in `.env`:
 
+R2 management can use a separate `R2_API_TOKEN` (the API token value from the R2
+Admin Read & Write token screen). The deployment helper uses that token for bucket
+management, and retains `CLOUDFLARE_API_TOKEN` for Workers. S3 Access Key ID and
+Secret Access Key are separate credentials, not bearer tokens for the REST API.
+
 - `CLOUDFLARE_ACCOUNT_ID`: account ID (not zone ID).
 - `CLOUDFLARE_API_TOKEN`: scoped to this account, Workers Scripts Edit, Workers R2
   Storage Edit, Account Settings Read, and Workers Subdomain Edit when available.

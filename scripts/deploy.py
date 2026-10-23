@@ -17,7 +17,7 @@ def call(client,method,url,**kwargs):
         raise RuntimeError(f'Deployment request failed: HTTP {response.status_code}; check token permissions and account setup')
     return response.json() if response.content else {}
 
-def deploy_worker(values):
+def deploy_worker(values,github_dispatch=False):
     account=values.get('CLOUDFLARE_ACCOUNT_ID'); token=values.get('CLOUDFLARE_API_TOKEN')
     if not account or not token: raise ValueError('Missing Cloudflare account or deployment token')
     app=values.get('JOB_SEEKER_APP_TOKEN')
@@ -27,14 +27,15 @@ def deploy_worker(values):
     with httpx.Client(headers={'Authorization':'Bearer '+token},timeout=60,trust_env=False) as client:
         sub=call(client,'GET',base+'/workers/subdomain').get('result',{}).get('subdomain')
         if not sub: raise ValueError('Register your workers.dev subdomain in Cloudflare before deploying')
-        buckets=call(client,'GET',base+'/r2/buckets').get('result',{}).get('buckets',[])
+        r2_headers={'Authorization':'Bearer '+(values.get('R2_API_TOKEN') or token)}
+        buckets=call(client,'GET',base+'/r2/buckets',headers=r2_headers).get('result',{}).get('buckets',[])
         if not any(x.get('name')=='job-seeker-private' for x in buckets):
-            call(client,'POST',base+'/r2/buckets',json={'name':'job-seeker-private'})
+            call(client,'POST',base+'/r2/buckets',headers=r2_headers,json={'name':'job-seeker-private'})
         bindings=[{'type':'r2_bucket','name':'STATE','bucket_name':'job-seeker-private'},
                   {'type':'secret_text','name':'APP_TOKEN','text':app},
                   {'type':'plain_text','name':'GITHUB_REPOSITORY','text':REPO},
                   {'type':'plain_text','name':'GITHUB_REF','text':'main'}]
-        if values.get('GITHUB_DEPLOY_TOKEN'): bindings.append({'type':'secret_text','name':'GITHUB_TOKEN','text':values['GITHUB_DEPLOY_TOKEN']})
+        if github_dispatch and values.get('GITHUB_DEPLOY_TOKEN'): bindings.append({'type':'secret_text','name':'GITHUB_TOKEN','text':values['GITHUB_DEPLOY_TOKEN']})
         metadata={'main_module':'worker.js','compatibility_date':'2026-10-23','bindings':bindings}
         parts={'metadata':(None,json.dumps(metadata),'application/json')}
         for name in ('worker.js','page.js'):
@@ -68,10 +69,10 @@ def github_secrets(values):
                 print('Configured environment secret: '+name)
 
 def main():
-    parser=argparse.ArgumentParser(); parser.add_argument('action',choices=['worker','github-secrets']); args=parser.parse_args()
+    parser=argparse.ArgumentParser(); parser.add_argument('action',choices=['worker','github-secrets']); parser.add_argument('--enable-github-dispatch',action='store_true'); args=parser.parse_args()
     values=dotenv_values(ROOT/'.env')
     try:
-        if args.action=='worker': deploy_worker(values)
+        if args.action=='worker': deploy_worker(values,args.enable_github_dispatch)
         else: github_secrets(values)
     except Exception as exc:
         # Do not log provider exception bodies, request objects or local values.

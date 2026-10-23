@@ -105,3 +105,10 @@ configurable runner; legacy research retains its earlier pilot defaults.
 
 Luna and Tavily passed a live smoke test. Search quality still depends on queries and
 source access. Cloud deployment needs its own acceptance run before it is production-ready.
+
+## Discovery evidence
+
+Findings include discovery_trails with search queries, result ranks, run IDs,
+observation times and paths reconstructed from saved search results and observed
+links. Both dashboards display these under How was this found? Missing historical
+evidence stays unavailable. These paths are evidence, not model reasoning logs.

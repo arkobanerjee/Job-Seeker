@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/configurable-job-seeker'
+BRANCH='codex/job-discovery-trails'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -30,17 +30,12 @@ def main():
         parent=head.json()['object']['sha'] if exists else api('GET','/git/ref/heads/main')['object']['sha']
         tree_base=api('GET','/git/commits/'+parent)['tree']['sha']
         tree=api('POST','/git/trees',{'base_tree':tree_base,'tree':entries})
-        commit=api('POST','/git/commits',{'message':'Add configurable job research, resume context, review queue and private cloud deployment','tree':tree['sha'],'parents':[parent]})
+        commit=api('POST','/git/commits',{'message':'Record and display job discovery evidence paths','tree':tree['sha'],'parents':[parent]})
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds configurable GPT 5.6 Luna research with editable master prompt and private Markdown profile/resume ingestion. '
-              'Source-backed rejected roles remain in a persistent review queue, and manual apply-anyway decisions survive new assessments.\n\n'
-              'Includes bounded per-page LangGraph assessments, restartable checkpoints, local dashboard, Telegram completion notifications, '
-              'and an authenticated Cloudflare Worker/R2 plus serialized GitHub Actions deployment. Personal data and credentials are excluded.\n\n'
-              'Validation: 19 offline Python tests and 4 Node tests pass; a bounded Luna/Tavily smoke test completed. '
-              'Cloud acceptance is still pending; no scheduled searches are enabled.')
-        pr=prs[0] if prs else api('POST','/pulls',{'title':'Add configurable job research and private deployment','head':BRANCH,'base':'main','body':body,'draft':True})
+        body=('Job records now include search queries, result ranks, observation times and discovery paths reconstructed from saved search results and observed links. Both dashboards expose the evidence under How was this found; historical results without evidence remain explicitly unavailable.\n\nValidation: 22 Python tests and 4 Node tests pass, including direct results, multi-page evidence paths, cycles, redirects and restart recovery. No paid searches or production deployment performed for this change. Telegram questions remain a separate unfinished milestone.')
+        pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':
