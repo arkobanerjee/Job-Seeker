@@ -1,3 +1,4 @@
+import {readControl} from './controls.js';
 const json=(x,status=200)=>new Response(JSON.stringify(x),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
 export async function resume(env,runId){
   const r=await fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/research.yml/dispatches`,{method:'POST',headers:{Authorization:`Bearer ${env.GITHUB_TOKEN}`,'User-Agent':'Job-Seeker','Content-Type':'application/json',Accept:'application/vnd.github+json'},body:JSON.stringify({ref:env.GITHUB_REF,inputs:{run_id:runId}})});
@@ -27,7 +28,7 @@ export async function webhook(request,env){
         const pending=[];
         for(const item of list.objects){
           const q=await (await env.STATE.get(item.key)).json();
-          if(!await env.STATE.get('answers/'+q.id+'.json'))pending.push(q);
+          if((await readControl(env,q.run_id)).action!=='cancel'&&!await env.STATE.get('answers/'+q.id+'.json'))pending.push(q);
           if(pending.length>1)break;
         }
         if(pending.length===1)match=[null,pending[0].id,m.text];
@@ -36,7 +37,8 @@ export async function webhook(request,env){
     if(!match)return json({ignored:true});
     const object=await env.STATE.get('questions/'+match[1]+'.json');
     if(!object)return json({ignored:true});
-    const question=await object.json(),key='answers/'+match[1]+'.json';
+    const question=await object.json();if((await readControl(env,question.run_id)).action==='cancel')return json({ignored:true});
+    const key='answers/'+match[1]+'.json';
     if(!match[2].trim())return json({ignored:true});
     const answer={answer:match[2],revision:question.revision,run_id:question.run_id};
     const stored=await env.STATE.put(key,JSON.stringify(answer),{onlyIf:{etagDoesNotMatch:'*'}});
@@ -52,7 +54,7 @@ export async function questionApi(request,env,path){
     const list=await env.STATE.list({prefix:'questions/',limit:100});const questions=[];
     for(const entry of list.objects){
       const q=await (await env.STATE.get(entry.key)).json();
-      if(!await env.STATE.get('answers/'+q.id+'.json'))questions.push({id:q.id,run_id:q.run_id,revision:q.revision,prompt:q.prompt,reason:q.reason});
+      if((await readControl(env,q.run_id)).action!=='cancel'&&!await env.STATE.get('answers/'+q.id+'.json'))questions.push({id:q.id,run_id:q.run_id,revision:q.revision,prompt:q.prompt,reason:q.reason});
     }
     return json({questions,more:!!list.truncated});
   }
@@ -60,7 +62,7 @@ export async function questionApi(request,env,path){
     const b=await request.json();
     if(!/^[a-f0-9]{24}$/.test(b.id)||typeof b.answer!=='string'||!b.answer.trim()||b.answer.length>4000)return json({error:'Invalid answer'},400);
     const object=await env.STATE.get('questions/'+b.id+'.json');if(!object)return json({error:'Unknown question'},404);
-    const q=await object.json();if(b.revision!==q.revision)return json({error:'Stale question'},409);
+    const q=await object.json();if((await readControl(env,q.run_id)).action==='cancel')return json({error:'Run cancelled'},409);if(b.revision!==q.revision)return json({error:'Stale question'},409);
     const answer={answer:b.answer,revision:q.revision,run_id:q.run_id},key='answers/'+q.id+'.json';
     const stored=await env.STATE.put(key,JSON.stringify(answer),{onlyIf:{etagDoesNotMatch:'*'}});
     const previous=stored?answer:await (await env.STATE.get(key)).json();

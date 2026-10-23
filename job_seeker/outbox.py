@@ -34,6 +34,8 @@ class Outbox:
             raise
         with closing(sqlite3.connect(self.path)) as db,db:db.execute("UPDATE notifications SET status='sent',message_id=? WHERE id=?",(message_id,ident))
         return message_id
+    def cancel(self,ident):
+        with closing(sqlite3.connect(self.path)) as db,db:db.execute("UPDATE notifications SET status='cancelled' WHERE id=? AND status='pending'",(ident,))
     def drain(self,before_send=None):
         with closing(sqlite3.connect(self.path)) as db:ids=[r[0] for r in db.execute("SELECT id FROM notifications WHERE status='pending' AND attempts<5 AND retry_at<=? LIMIT 20",(time.time(),))]
         for ident in ids:

@@ -178,6 +178,16 @@ class ProductTests(unittest.TestCase):
                 _,result=run(config);self.assertEqual(result['status'],'completed');self.assertEqual(len(searches),2)
                 self.assertEqual(len(result['competitor_leads']),1);self.assertEqual(len(result['findings']),1)
 
+    def test_pause_and_cancel_stop_before_paid_work_and_preserve_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);setup(root)
+            with patch('job_seeker.runner.ROOT',root),patch.dict('os.environ',{'OPENAI_API_KEY':'fake','TAVILY_API_KEY':'fake'}),patch.object(SourceTools,'search',side_effect=AssertionError('Must stop before paid work')):
+                folder,result=run(root/'config.toml',control=lambda ident:'pause')
+                self.assertEqual(result['status'],'paused');self.assertTrue((folder/'checkpoint.json').exists())
+                _,result=run(resume=folder.name,control=lambda ident:'cancel')
+                self.assertEqual(result['status'],'cancelled')
+                with self.assertRaises(ValueError):run(resume=folder.name)
+
     def test_worker_lock(self):
         with tempfile.TemporaryDirectory() as tmp:
             with single_worker(Path(tmp)):
