@@ -18,6 +18,7 @@ class Registry:
         path.parent.mkdir(parents=True,exist_ok=True);self.path=path
         with closing(sqlite3.connect(path)) as db,db:
             db.executescript("""
+            CREATE TABLE IF NOT EXISTS corroborations(id TEXT PRIMARY KEY,payload TEXT);
             CREATE TABLE IF NOT EXISTS company_profiles(id TEXT PRIMARY KEY,payload TEXT);
             CREATE TABLE IF NOT EXISTS official_edges(origin TEXT,target TEXT,PRIMARY KEY(origin,target));
             CREATE TABLE IF NOT EXISTS board_counts(url TEXT,run_id TEXT,payload TEXT,PRIMARY KEY(url,run_id));
@@ -30,6 +31,8 @@ class Registry:
             CREATE TABLE IF NOT EXISTS company_sources(company_id TEXT,url TEXT,run_id TEXT,PRIMARY KEY(company_id,url,run_id));
             CREATE TABLE IF NOT EXISTS source_observations(url TEXT,run_id TEXT,observed_at TEXT,status TEXT,content_hash TEXT,http_status INTEGER,PRIMARY KEY(url,run_id));
             """)
+    def save_corroboration(self,item):
+        with closing(sqlite3.connect(self.path)) as db,db:db.execute('INSERT OR REPLACE INTO corroborations VALUES(?,?)',(item['id'],json.dumps(item)))
     def configure_profiles(self,profiles):
         with closing(sqlite3.connect(self.path)) as db,db:
             db.execute('DELETE FROM company_profiles')
@@ -116,7 +119,7 @@ class Registry:
                         item['change']='first_observation' if previous is None else 'unchanged' if previous==item['content_hash'] else 'text_changed'
                         previous=item['content_hash']
                 sources.append({'url':url,'host':host,'ats':ats,'official_status':'unverified','history':history[-20:]})
-            return {'companies':companies,'sources':sources,'momentum':self.momentum(),'competitors':[dict(json.loads(p),id=i) for i,p in db.execute('SELECT id,payload FROM competitor_leads')],'signals':[dict(json.loads(p),id=i) for i,p in db.execute('SELECT id,payload FROM signals')]}
+            return {'companies':companies,'sources':sources,'corroborations':[json.loads(p) for p, in db.execute('SELECT payload FROM corroborations')],'momentum':self.momentum(),'competitors':[dict(json.loads(p),id=i) for i,p in db.execute('SELECT id,payload FROM competitor_leads')],'signals':[dict(json.loads(p),id=i) for i,p in db.execute('SELECT id,payload FROM signals')]}
     def monitor_targets(self,limit):
         with closing(sqlite3.connect(self.path)) as db:
             return [r[0] for r in db.execute("SELECT s.url FROM sources s LEFT JOIN source_observations o ON s.url=o.url GROUP BY s.url ORDER BY MAX(o.observed_at) ASC,s.url LIMIT ?",(limit,))]

@@ -54,13 +54,14 @@ class Cloud:
         self.token=os.getenv('JOB_SEEKER_APP_TOKEN','')
         if not self.url.startswith('https://') or not self.token: raise ValueError('Set JOB_SEEKER_URL and JOB_SEEKER_APP_TOKEN')
 
-    def request(self,path,method='GET',body=None,binary=False):
+    def request(self,path,method='GET',body=None,binary=False,return_etag=False,expected_etag=None):
         try:
             with httpx.Client(timeout=60,trust_env=False,follow_redirects=False) as client:
                 response=client.request(method,self.url+'/api/'+path,headers={'Authorization':'Bearer '+self.token,
-                    'Content-Type':'application/zip' if binary else 'application/json'},content=body if binary else None,json=body if not binary else None)
+                    'Content-Type':'application/zip' if binary else 'application/json',**({'If-Match':expected_etag} if expected_etag else {})},content=body if binary else None,json=body if not binary else None)
             if response.status_code!=200: raise ValueError('Cloud request failed: HTTP '+str(response.status_code))
-            return response.content if path=='state' and method=='GET' else response.json()
+            if return_etag:return response.content,response.headers.get('etag')
+            return response.content if method=='GET' and (path=='state' or path.startswith('backup/')) else response.json()
         except httpx.HTTPError: raise ValueError('Cloud connection failed') from None
 
     def sync(self):
@@ -98,7 +99,7 @@ def run_cloud(resume=None,monitor=False,scheduled=False):
     if os.getenv('GITHUB_ACTIONS')!='true': raise ValueError('Cloud worker runs through the serialized GitHub Actions workflow')
     if not resume: os.environ['JOB_SEEKER_SCHEDULED']='true' if scheduled else 'false'
     if not resume: os.environ['JOB_SEEKER_MONITORING']='true' if monitor else 'false'
-    cloud=Cloud(); unpack(cloud.request('state'))
+    cloud=Cloud(); initial=cloud.request('state'); unpack(initial)
     for name,content in cloud.request('settings').items():
         if name not in ('config.toml','prompts/master.md','private/profile.md','private/resume.md') or not isinstance(content,str): raise ValueError('Unexpected cloud settings')
         target=ROOT/name; target.parent.mkdir(exist_ok=True,parents=True); target.write_text(content,encoding='utf-8')
@@ -120,6 +121,7 @@ def run_cloud(resume=None,monitor=False,scheduled=False):
         claim=cloud.request('schedule-claim','POST',{'date':date})
         if not claim.get('claimed'): return None,{'status':'skipped','reason':'already_checked_today','findings':[]}
         settings.limits.run_usd=min(settings.limits.run_usd,settings.monitoring.daily_run_usd)
+    backup_cloud(cloud,initial)
     # Reserve the entire run ceiling before any paid action. A killed runner cannot
     # reset global accounting by losing its last snapshot. No automatic refunds.
     if not resume:
@@ -144,6 +146,29 @@ def run_cloud(resume=None,monitor=False,scheduled=False):
     if scheduled: cloud.request('monitor-status','PUT',{'status':result['status'],'run_id':result['run_id']})
     return folder,result
 
+def backup_cloud(cloud=None,data=None):
+    from .backups import verify_archive
+    cloud=cloud or Cloud();data=data if data is not None else cloud.request('state')
+    digest=verify_archive(data);ident=uuid4().hex
+    manifest=cloud.request('backup/'+ident,'PUT',data,True)
+    if manifest['sha256']!=digest:raise ValueError('Uploaded backup checksum mismatch')
+    return manifest
+
+def restore_cloud(ident):
+    if os.getenv('GITHUB_ACTIONS')!='true':raise ValueError('Restore through the serialized workflow')
+    import re
+    if not re.fullmatch(r'[a-f0-9]{32}',ident or ''):raise ValueError('Invalid backup ID')
+    from .backups import verify_archive,restore_payload
+    cloud=Cloud();manifest=next((x for x in cloud.request('backups') if x['id']==ident),None)
+    if not manifest:raise ValueError('Unknown retained backup')
+    data=cloud.request('backup/'+ident);verify_archive(data,manifest['sha256'])
+    current,etag=cloud.request('state',return_etag=True)
+    if not etag:raise ValueError('Missing state version; restore aborted')
+    restored=restore_payload(data,current)
+    backup_cloud(cloud,current)
+    cloud.request('state','PUT',restored,True,expected_etag=etag)
+    unpack(restored);cloud.sync()
+
 def retry_notifications():
     if os.getenv('GITHUB_ACTIONS')!='true':raise ValueError('Retry through the serialized GitHub workflow')
     from .questions import Questions,send_question
@@ -161,9 +186,11 @@ def retry_notifications():
 
 def main():
     import argparse
-    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','scheduled','notifications','settings']); parser.add_argument('--run-id')
+    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','scheduled','notifications','backup','restore','settings']); parser.add_argument('--run-id'); parser.add_argument('--backup-id')
     args=parser.parse_args()
-    if args.command=='notifications': retry_notifications(); print('Notification recovery attempted; no research rerun')
+    if args.command=='backup': print('Private backup created: '+backup_cloud()['id'])
+    elif args.command=='restore': restore_cloud(args.backup_id); print('Research restored; current spending ledger and settings retained')
+    elif args.command=='notifications': retry_notifications(); print('Notification recovery attempted; no research rerun')
     elif args.command=='bootstrap': bootstrap(); print('Private cloud state initialized')
     elif args.command=='settings':
         from .settings import render_prompt

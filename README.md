@@ -264,3 +264,31 @@ can resume within the original budget; cancellation is terminal and cancels pend
 question delivery. Existing findings/evidence are retained. Cancelled questions cannot
 be answered in the dashboard. Controls do not forcibly terminate an in-flight HTTP
 request; they stop at cooperative boundaries.
+
+## Cross-source signal review
+
+Enable corroboration.enabled for separate-context comparisons of already collected
+signals. At most corroboration.max_pairs comparisons share the run model-call and
+spending ceilings. Same-host pairs and identical excerpts are excluded. Supported
+or contradictory conclusions need matching quotes from both excerpts. Distinct
+publisher ownership is claimed only for explicitly configured, different publisher
+groups; otherwise independence remains unverified. This makes no extra searches
+and cannot turn a signal into a vacancy.
+
+## Private backups and restoration
+
+Cloud research creates a checksum-verified private R2 backup before modifying state.
+The five latest snapshots are retained; older backup objects in the dedicated prefix
+are pruned. This retention does not delete the active catalog, budget or run history.
+Snapshots still have the existing 20 MB limit. The dashboard can queue backup creation
+or an explicitly acknowledged restore through the serialized workflow. No archive
+is uploaded as a public GitHub artifact.
+
+Restore validates checksums and archive paths, creates a pre-restore backup, and uses
+a state-version check to reject concurrent changes. It restores research data while
+preserving current local spending records, delivery receipts, questions, private
+preferences and unresolved/cancelled task folders. The separate cloud budget gate,
+settings, controls, answers and decisions are never rolled back. A current valid
+spending ledger is required; restore cannot repair a missing/corrupt financial ledger.
+Checksums are corruption checks; backups in the same account are not an independent
+off-account disaster-recovery copy. Live restore drills remain part of acceptance.

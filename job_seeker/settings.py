@@ -108,6 +108,22 @@ class Companies(Strict):
                 seen[key]=profile.name
         return self
 
+class CorroborationSettings(Strict):
+    enabled: bool = False
+    max_pairs: int = Field(default=2,ge=1,le=5)
+    publishers: dict[str,list[str]] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def publisher_domains(self):
+        seen={}
+        for name,domains in self.publishers.items():
+            CompanyProfile(name=name,official_domains=domains)
+            for domain in domains:
+                if domain in seen and seen[domain]!=name:raise ValueError('Publisher domain assigned to multiple owners')
+                seen[domain]=name
+        return self
+
+
 class Settings(Strict):
     model: ModelSettings = Field(default_factory=ModelSettings)
     limits: Limits = Field(default_factory=Limits)
@@ -119,6 +135,7 @@ class Settings(Strict):
     review: ReviewSettings = Field(default_factory=ReviewSettings)
     competitors: Competitors = Field(default_factory=Competitors)
     companies: Companies = Field(default_factory=Companies)
+    corroboration: CorroborationSettings = Field(default_factory=CorroborationSettings)
 
 def load_settings(path=None):
     path=Path(path or ROOT/"config.toml").resolve()
