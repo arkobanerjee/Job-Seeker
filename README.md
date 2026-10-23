@@ -172,7 +172,7 @@ https://github.com/lever/postings-api . No application-submission endpoints are 
 
 ## Daily monitoring and notifications
 
-The shared serialized workflow runs at 09:17 Europe/Berlin. GitHub may delay scheduled
+The shared serialized workflow runs at 09:17 Europe/Berlin, Monday–Friday. GitHub may delay scheduled
 runs. Set monitoring.schedule_enabled=true in private cloud config to opt in; the
 default is false. monitoring.daily_run_usd defaults to $0.25 and cannot raise the
 normal per-run ceiling. The existing cumulative $5 review gate remains unchanged.
@@ -186,3 +186,14 @@ Material fields include role, fit, language, eligibility, concerns and evidence.
 This is conservative field comparison rather than a semantic change classifier.
 Manual runs retain their completion summaries. Notification delivery retry remains
 a separate outstanding reliability task. No automatic budget reset or increase occurs.
+
+## Operations dashboard
+
+Questions waiting for you can be answered in the authenticated dashboard as well as
+Telegram. Answers are tied to the stored revision, immutable once accepted, and queue
+the saved run. If dispatch fails, retry the identical answer. Run history shows status,
+progress, errors, limitations and reported usage estimates; prompts and page text are
+excluded. Continue saved run is available only for recoverable cloud runs with an
+existing budget envelope. History appears after the next checkpoint sync.
+
+Multi-worker performance experiments are deferred until single-worker completion.

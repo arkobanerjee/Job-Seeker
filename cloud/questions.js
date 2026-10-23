@@ -48,6 +48,25 @@ export async function webhook(request,env){
   }catch{return json({error:'Reply handling failed'},500)}
 }
 export async function questionApi(request,env,path){
+  if(path==='/api/questions' && request.method==='GET'){
+    const list=await env.STATE.list({prefix:'questions/',limit:100});const questions=[];
+    for(const entry of list.objects){
+      const q=await (await env.STATE.get(entry.key)).json();
+      if(!await env.STATE.get('answers/'+q.id+'.json'))questions.push({id:q.id,run_id:q.run_id,revision:q.revision,prompt:q.prompt,reason:q.reason});
+    }
+    return json({questions,more:!!list.truncated});
+  }
+  if(path==='/api/answer' && request.method==='POST'){
+    const b=await request.json();
+    if(!/^[a-f0-9]{24}$/.test(b.id)||typeof b.answer!=='string'||!b.answer.trim()||b.answer.length>4000)return json({error:'Invalid answer'},400);
+    const object=await env.STATE.get('questions/'+b.id+'.json');if(!object)return json({error:'Unknown question'},404);
+    const q=await object.json();if(b.revision!==q.revision)return json({error:'Stale question'},409);
+    const answer={answer:b.answer,revision:q.revision,run_id:q.run_id},key='answers/'+q.id+'.json';
+    const stored=await env.STATE.put(key,JSON.stringify(answer),{onlyIf:{etagDoesNotMatch:'*'}});
+    const previous=stored?answer:await (await env.STATE.get(key)).json();
+    if(previous.answer!==answer.answer)return json({error:'Already answered'},409);
+    return await resume(env,q.run_id)?json({saved:true,queued:true}):json({error:'Answer saved; resume failed. Retry the same answer.'},502);
+  }
   if(path==='/api/question' && request.method==='POST'){
     const q=await request.json();
     if(!/^[a-f0-9]{24}$/.test(q.id)||!/^[a-f0-9]{32}$/.test(q.run_id)||typeof q.prompt!=='string'||q.prompt.length>1500||typeof q.revision!=='string'||q.revision.length>3000)return json({error:'Invalid question'},400);

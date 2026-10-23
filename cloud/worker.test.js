@@ -83,3 +83,27 @@ test('daily claims are idempotent and monitor status stays private',async()=>{
  await worker.fetch(req('/api/monitor-status','PUT',{status:'skipped',reason:'budget_review_required'}),e);
  assert.equal((await (await worker.fetch(req('/api/monitor-status'),e)).json()).reason,'budget_review_required');
 });
+
+test('dashboard questions validate revision and persist immutable answers',async()=>{
+ const e=env();e.GITHUB_TOKEN='dispatch';e.GITHUB_REPOSITORY='owner/repo';e.GITHUB_REF='main';
+ const q={id:'d'.repeat(24),run_id:'e'.repeat(32),revision:'rev',prompt:'Hybrid work?',reason:'Preference needed'};
+ await worker.fetch(req('/api/question','POST',q),e);
+ assert.equal((await worker.fetch(req('/api/questions','GET',null,'wrong'),e)).status,401);
+ assert.equal((await (await worker.fetch(req('/api/questions'),e)).json()).questions.length,1);
+ assert.equal((await worker.fetch(req('/api/answer','POST',{id:q.id,revision:'old',answer:'yes'}),e)).status,409);
+ const original=globalThis.fetch;globalThis.fetch=async()=>new Response(null,{status:204});
+ try{
+  assert.equal((await worker.fetch(req('/api/answer','POST',{id:q.id,revision:q.revision,answer:'yes'}),e)).status,200);
+  assert.equal((await (await worker.fetch(req('/api/questions'),e)).json()).questions.length,0);
+  assert.equal((await worker.fetch(req('/api/answer','POST',{id:q.id,revision:q.revision,answer:'no'}),e)).status,409);
+ }finally{globalThis.fetch=original}
+});
+test('history resumes only a recoverable saved cloud run',async()=>{
+ const e=env();const run_id='f'.repeat(32);
+ assert.equal((await worker.fetch(req('/api/runs','GET',null,'wrong'),e)).status,401);
+ await worker.fetch(req('/api/runs','PUT',[{run_id,status:'completed',can_resume:false}]),e);
+ assert.equal((await worker.fetch(req('/api/resume','POST',{run_id}),e)).status,409);
+ await worker.fetch(req('/api/runs','PUT',[{run_id,status:'partial',can_resume:true}]),e);
+ const original=globalThis.fetch;globalThis.fetch=async()=>new Response(null,{status:204});
+ try{assert.equal((await worker.fetch(req('/api/resume','POST',{run_id}),e)).status,200)}finally{globalThis.fetch=original}
+});

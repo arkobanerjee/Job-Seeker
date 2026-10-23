@@ -1,9 +1,9 @@
 // One-owner control plane. All data endpoints require a high-entropy bearer secret.
 import { page } from './page.js';
-import { webhook,questionApi } from './questions.js';
+import { webhook,questionApi,resume } from './questions.js';
 const headers = {'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const reply = (body,status=200) => new Response(JSON.stringify(body),{status,headers});
-const keyFor = path => path === '/api/state' ? 'state/latest.zip' : path === '/api/catalog' ? 'catalog/latest.json' : null;
+const keyFor = path => path === '/api/state' ? 'state/latest.zip' : path === '/api/catalog' ? 'catalog/latest.json' : path === '/api/runs' ? 'runs/latest.json' : null;
 export default {
   async fetch(request,env) {
     const u=new URL(request.url);
@@ -86,6 +86,21 @@ export default {
         const body=await request.json();
         if(!Array.isArray(body.companies)||!Array.isArray(body.sources)||JSON.stringify(body).length>2000000)return reply({error:'Invalid registry'},400);
         await env.STATE.put('registry/latest.json',JSON.stringify(body));return reply({saved:true});
+      }
+      if(u.pathname==='/api/runs' && request.method==='PUT') {
+        const body=await request.json();
+        if(!Array.isArray(body)||body.length>250||body.some(x=>!x||!/^[a-f0-9]{32}$/.test(x.run_id)||typeof x.status!=='string')||JSON.stringify(body).length>2000000)return reply({error:'Invalid history'},400);
+        await env.STATE.put('runs/latest.json',JSON.stringify(body));return reply({saved:true});
+      }
+      if(u.pathname==='/api/runs' && request.method==='GET') {
+        const object=await env.STATE.get('runs/latest.json');return reply(object?await object.json():[]);
+      }
+      if(u.pathname==='/api/resume' && request.method==='POST') {
+        const {run_id}=await request.json();if(!/^[a-f0-9]{32}$/.test(run_id))return reply({error:'Invalid run'},400);
+        const object=await env.STATE.get('runs/latest.json');const rows=object?await object.json():[];
+        const run=rows.find(x=>x.run_id===run_id);
+        if(!run||!run.can_resume||!['partial','failed'].includes(run.status))return reply({error:'Run cannot be resumed'},409);
+        return await resume(env,run_id)?reply({queued:true}):reply({error:'Resume dispatch failed'},502);
       }
       const key=keyFor(u.pathname);
       if(key && request.method==='GET') {
