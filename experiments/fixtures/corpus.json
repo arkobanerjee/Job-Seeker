@@ -1,0 +1,11 @@
+{
+  "tasks": [
+    {"id":"ai-germany","track":"ai","query":"AI Engineer RAG Germany English"},
+    {"id":"data-germany","track":"data","query":"Data Analyst Germany English"}
+  ],
+  "pages": [
+    {"url":"https://example.com/shared","title":"AI and Data Engineer","source_id":"shared","search_terms":["AI","Analyst"],"text":"AI and Data Engineer: build production RAG pipelines and analytical data systems in Germany.","http_status":200,"observed_at":"2026-10-23T12:00:00+00:00"},
+    {"url":"https://example.com/ai","title":"Applied AI Engineer","source_id":"ai","search_terms":["RAG"],"text":"Applied AI Engineer: deploy retrieval augmented generation products and evaluate their quality.","http_status":200,"observed_at":"2026-10-23T12:00:00+00:00"},
+    {"url":"https://example.com/data","title":"Data Analyst","source_id":"data","search_terms":["Analyst"],"simulate_failure":true,"text":"Data Analyst: automate reporting and maintain reliable analytical pipelines.","http_status":200,"observed_at":"2026-10-23T12:00:00+00:00"}
+  ]
+}

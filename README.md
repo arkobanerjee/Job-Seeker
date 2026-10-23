@@ -323,3 +323,10 @@ before showing board activity; incompatible collection scopes reset the baseline
 The manual dashboard control uses the same serialized worker. Optional competitor
 and corroboration probes passed focused real-source checks, with publisher
 independence explicitly unverified. See DEPLOYMENT.md for limits and configuration.
+
+## Current operating choice and user guide
+
+Use setup A: one sequential researcher. The separate 18-run GPT-6 Luna comparison showed faster parallel execution but no established quality advantage; production remains unchanged. Experiments and their budget/data remain separate under private/comparison.
+
+See [USER_GUIDE.md](USER_GUIDE.md) for daily use, operations, editing your background, scheduling, budgets and interpreting run history. Historical limitations reflect the background available at the time.
+
