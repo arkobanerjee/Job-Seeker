@@ -12,7 +12,7 @@ const card=document.createElement('article');text('small',f.kind,card);text('h2'
 text('p','Discovery: '+(f.discovery_method||'Earlier research')+' · assessment: '+(f.assessment_reused?'reused after source check':'assessed'),card);
 for(const [label,key] of [['Fit','fit_reason'],['Company','company_details'],['Location','location'],['Language','language'],['Eligibility','eligibility'],['Evidence','evidence_quote']])text('p',label+': '+(f[key]||'Unknown'),card);
 text('p','Reasons / concerns: '+(f.rejection_reasons?.length?f.rejection_reasons:f.concerns||[]).join('; '),card);
-const trail=document.createElement('details');text('summary','How was this found?',trail);
+const trail=document.createElement('details');text('summary','How was this found?',trail);text('p','Collection: '+(f.collection_method||'public page'),trail);if(f.api_url?.startsWith('https://')){const apiLink=text('a','API evidence source',trail);apiLink.href=f.api_url;apiLink.target='_blank';apiLink.rel='noopener noreferrer'}
 if(!f.discovery_trails?.length)text('p','Discovery trail unavailable for this older result.',trail);
 text('p','Paths reconstructed from saved search results and observed links.',trail);
 for(const t of f.discovery_trails||[]){text('p','Search: '+t.query+' · result '+t.result_rank,trail);text('p','Run: '+t.run_id+' · observed: '+(t.observed_at||'Unknown'),trail);const steps=document.createElement('ol');for(const url of t.path){const li=document.createElement('li');if(url.startsWith('https://')){const a=text('a',url,li);a.href=url;a.target='_blank';a.rel='noopener noreferrer'}else text('span',url,li);steps.append(li)}trail.append(steps)}card.append(trail);

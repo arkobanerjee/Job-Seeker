@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/repeat-source-monitoring'
+BRANCH='codex/structured-ats-collectors'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -34,9 +34,9 @@ def main():
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds on-demand saved-source monitoring through the dashboard and GitHub workflow. Checks revisit oldest observed source URLs within existing page and budget caps without discovery searches. A durable assessment cache reuses model output only when page input, links, profile/prompt, model configuration, policy and schema match. Changes trigger reassessment, while unavailable pages remain distinct from closure.\n\nValidation: 32 Python tests and 8 Node tests pass. An offline repeated-monitor run verifies no searches, no repeated assessment for unchanged input, and reassessment after a profile change. Dashboard script syntax checked. No paid searches or live deployment performed.\n\nRecurring scheduling and structured ATS collection remain pending. Cloud keeps its whole-run reservation policy, so cached monitoring does not bypass the five-dollar review gate.')
+        body=('Adds bounded public Greenhouse and Lever collectors, including Lever EU. Recognized hosted URLs map to documented GET endpoints; individual postings retain original listing URLs, provider job IDs and API evidence URLs. Board indexes supply up to 30 same-tenant vacancy links without an LLM call. Response size, source policy, public-network checks and page limits remain enforced.\n\nValidation: 39 Python tests and 8 Node tests pass, including collector/runner integration, tenant restrictions, job-ID mismatch, policy denial and API provenance. One saved Lever source was checked via HTTP but remained unavailable; live structured retrieval is therefore not yet verified. No paid search or model calls were made.\n\nThis is bounded collection, not a complete vacancy census. Unsupported ATS sources use ordinary retrieval; absence from a sample never establishes closure.')
         pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Recheck saved sources and reuse unchanged assessments','body':body})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Collect public Greenhouse and Lever vacancies through structured APIs','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

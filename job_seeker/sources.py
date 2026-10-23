@@ -40,7 +40,7 @@ def public_get(url):
         conn._create_connection = lambda address, timeout=None, source_address=None: socket.create_connection((addr,443), timeout, source_address)
         try:
             conn.request("GET", (p.path or "/") + ("?"+p.query if p.query else ""),
-                         headers={"User-Agent":"JobSeekerPrototype/0.1", "Accept":"text/html,text/plain", "Accept-Encoding":"identity"})
+                         headers={"User-Agent":"JobSeekerPrototype/0.1", "Accept":"text/html,text/plain,application/json", "Accept-Encoding":"identity"})
             r = conn.getresponse()
             if r.status in (301,302,303,307,308):
                 url = urljoin(url,r.getheader("Location") or "")
@@ -48,7 +48,7 @@ def public_get(url):
             content_type = r.getheader("Content-Type", "")
             if r.status != 200:
                 return url,r.status,""
-            if not any(x in content_type for x in ("text/html","text/plain")):
+            if not any(x in content_type for x in ("text/html","text/plain","application/json")):
                 raise ValueError("Unsupported content type")
             data = r.read(500_001)
             if len(data) > 500_000:
@@ -125,7 +125,10 @@ class SourceTools:
             self.fetches+=1
             self.persist()
         try:
-            p=urlsplit(url); origin=f"https://{p.netloc}"
+            from .ats import endpoint,parse
+            ats=endpoint(url)
+            target=ats[3] if ats else url
+            p=urlsplit(target); origin=f"https://{p.netloc}"
             with self.lock:
                 if origin not in self.robots:
                     _,status,text=public_get(origin+"/robots.txt")
@@ -133,25 +136,29 @@ class SourceTools:
                         raise ValueError("Could not establish robots permission")
                     robot=RobotFileParser(); robot.parse(text.splitlines() if status==200 else [])
                     self.robots[origin]=robot
-                if not self.robots[origin].can_fetch("JobSeekerPrototype",url):
+                if not self.robots[origin].can_fetch("JobSeekerPrototype",target):
                     raise ValueError("Source disallows automated retrieval")
-            final,status,html=public_get(url)
+            final,status,html=public_get(target)
             if urlsplit(final).netloc!=p.netloc:
                 # Recheck the new origin's robots policy via a new tool call.
                 self.allowed.add(final)
                 return {"redirect":final,"note":"Fetch this destination separately to check its policy"}
-            parser=PageText(); parser.feed(html)
+            structured=parse(ats,html) if ats and status==200 else None
+            parser=PageText(); parser.feed(html if not structured else '')
             text=" ".join(" ".join(parser.parts).split())[:18000]
             links=[]
             for href in parser.hrefs:
                 try: link=normalized(urljoin(final,href))
                 except ValueError: continue
                 if link not in links and len(links)<30: links.append(link)
+            if structured:
+                text=structured["text"];links=structured["links"]
             closed=any(x in text.lower() for x in ("this job is no longer available","this position has been filled","job not found","this job has expired","the vacancy is closed","expired job"))
             record={"url":url,"final_url":final,"http_status":status,"text":text,
                     "source_id":hashlib.sha256(url.encode()).hexdigest()[:16],
                     "observed_at":datetime.now(timezone.utc).isoformat(),"closed_marker":closed,"links":links}
-        except (ValueError,OSError,http.client.HTTPException):
+            if structured: record.update(structured)
+        except (ValueError,TypeError,AttributeError,OSError,http.client.HTTPException):
             record={"url":url,"observed_at":datetime.now(timezone.utc).isoformat(),"error":"Retrieval unavailable, blocked by policy, too large, or unsupported; no closure inference"}
         with self.lock:
             self.allowed.update(record.get("links",[])); self.records[url]=record
