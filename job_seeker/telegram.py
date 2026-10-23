@@ -1,0 +1,20 @@
+"""Owner-only status notifications; never accepts destinations from model output."""
+import os
+import httpx
+
+def notify(result):
+    token=os.getenv("TELEGRAM_BOT_TOKEN","")
+    chat=os.getenv("TELEGRAM_CHAT_ID","")
+    if not token or not chat or not chat.lstrip("-").isdigit():
+        raise ValueError("Set TELEGRAM_BOT_TOKEN and your TELEGRAM_CHAT_ID in .env")
+    findings=result.get("findings",[])
+    text=(f"Job Seeker: {result['status']}\n"
+          f"Shortlist: {sum(x['kind']=='vacancy' for x in findings)}\n"
+          f"Rejected / manual review: {sum(x['kind']=='excluded' for x in findings)}\n"
+          f"Run: {result['run_id']}\nOpen your dashboard to review. No applications sent.")
+    try:
+        with httpx.Client(timeout=20,trust_env=False) as client:
+            response=client.post(f"https://api.telegram.org/bot{token}/sendMessage",json={"chat_id":chat,"text":text})
+        if response.status_code!=200 or not response.json().get("ok"): raise ValueError("Telegram delivery failed")
+    except Exception:
+        raise ValueError("Telegram delivery failed; check bot and owner chat configuration") from None

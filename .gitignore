@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.egg-info/
+runs/
+*.sqlite3
+private/
+search-profile.md
+personal-agent-system-design.md
+prototype-scope.md
+pilot-results.md
+.wrangler/
+node_modules/
+dist/
+config.acceptance.toml

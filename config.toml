@@ -1,0 +1,36 @@
+# Public defaults. Credentials belong in .env; personal text belongs in private/.
+[model]
+provider = "openai"
+name = "gpt-5.6-luna"
+reasoning_effort = "low"
+max_output_tokens = 4000
+# Verified standard, uncached USD per million tokens, 2026-10-23.
+input_usd_per_million = 0.20
+output_usd_per_million = 1.20
+
+[limits]
+run_usd = 2.0
+max_searches = 6
+max_pages = 12
+max_model_calls = 16
+context_bytes = 60000
+
+[prompts]
+master_file = "prompts/master.md"
+profile_file = "private/profile.md"
+resume_file = "private/resume.md"
+# Optional extra instructions appended to the editable master prompt.
+instructions = "Prioritize Germany. Keep technically relevant roles with language conflicts for manual review."
+
+[search]
+queries = [
+  { track = "ai", query = "AI Engineer LLM RAG Germany (site:jobs.lever.co OR site:job-boards.greenhouse.io OR site:recruitee.com)" },
+  { track = "data", query = "Data Scientist Analyst Germany English (site:jobs.personio.de OR site:jobs.lever.co OR site:job-boards.greenhouse.io)" },
+  { track = "ai", query = "Applied AI engineer Germany careers RAG site:jobs.personio.de" },
+  { track = "data", query = "Analytics engineer data analyst Germany English site:jobs.lever.co" },
+  { track = "ai", query = "AI engineer RAG Europe UAE remote careers English" },
+  { track = "data", query = "Data scientist analyst Croatia Cyprus Armenia UAE remote English careers" },
+]
+
+[notifications]
+telegram = false

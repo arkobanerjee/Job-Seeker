@@ -1,0 +1,15 @@
+[project]
+name = "job-seeker"
+version = "0.2.0"
+requires-python = ">=3.11"
+dependencies = ["langchain>=1,<2", "langgraph>=1,<2", "langchain-openai", "langchain-anthropic", "httpx", "python-dotenv>=1,<2"]
+
+[project.scripts]
+job-seeker = "job_seeker.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["job_seeker*"]
