@@ -296,7 +296,15 @@ off-account disaster-recovery copy. Live restore drills remain part of acceptanc
 
 Storage health is available from the private dashboard. A no-research diagnostic
 checks archive capacity and SQLite integrity; stale reports are marked. Research
-preflight blocks at 90% capacity before paid reservations. This is an early warning
-and stop, not automatic active-history compaction. See DEPLOYMENT.md for recovery
+preflight blocks at 90% capacity before paid reservations. Weekday maintenance archives verified copies of terminal evidence older than 30 days
+while retaining the newest 20 runs, current decisions and all continuity records.
+Cold archives stay private and can be downloaded from the dashboard. Persistent
+databases still require migration if they approach the limit. See DEPLOYMENT.md for recovery
 and the frozen 14-case quality evaluation workflow. Preparing/scoring evaluation
 files costs nothing; it does not mean a live model has passed those examples.
+
+
+Release acceptance is recorded in DEPLOYMENT.md. The first live synthetic quality
+run passed 8/14 strict checks, despite no false shortlists or missed suitable roles
+in that sample. Do not interpret passing software tests as complete model acceptance.
+`python -m job_seeker.drills` exercises isolated recovery with no paid services.

@@ -1,6 +1,7 @@
 // One-owner control plane. All data endpoints require a high-entropy bearer secret.
 import { page } from './page.js';
 import {backupApi} from './backups.js';
+import {archivesApi} from './archives.js';
 import {readControl,setControl} from './controls.js';
 import { webhook,questionApi,resume } from './questions.js';
 const headers = {'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
@@ -15,6 +16,7 @@ export default {
     if(request.headers.get('Origin') && request.headers.get('Origin')!==u.origin) return reply({error:'Invalid origin'},403);
     try {
       const backupResponse=await backupApi(request,env,u.pathname);if(backupResponse)return backupResponse;
+      const archiveResponse=await archivesApi(request,env,u.pathname);if(archiveResponse)return archiveResponse;
       const questionResponse=await questionApi(request,env,u.pathname);
       if(questionResponse)return questionResponse;
       if(u.pathname==='/api/health' && request.method==='GET') {
@@ -66,7 +68,7 @@ export default {
       if(u.pathname==='/api/run' && request.method==='POST') {
         if(!env.GITHUB_TOKEN) return reply({error:'GitHub dispatch not configured'},409);
         const body=await request.json(),mode=body.mode||'discovery';
-        if(!['discovery','monitor','notifications','backup','restore','diagnostics'].includes(mode))return reply({error:'Invalid research mode'},400);
+        if(!['discovery','monitor','notifications','backup','restore','diagnostics','maintenance'].includes(mode))return reply({error:'Invalid research mode'},400);
         const inputs={mode};if(mode==='restore'){if(!/^[a-f0-9]{32}$/.test(body.backup_id))return reply({error:'Invalid backup ID'},400);inputs.backup_id=body.backup_id}
         const response=await fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/research.yml/dispatches`,{
           method:'POST',headers:{Authorization:`Bearer ${env.GITHUB_TOKEN}`,'User-Agent':'Job-Seeker','Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:env.GITHUB_REF,inputs})});

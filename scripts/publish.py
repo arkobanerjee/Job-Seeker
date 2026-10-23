@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/storage-health-and-quality-evaluation'
+BRANCH='codex/release-acceptance-and-retention'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -30,13 +30,13 @@ def main():
         parent=head.json()['object']['sha'] if exists else api('GET','/git/ref/heads/main')['object']['sha']
         tree_base=api('GET','/git/commits/'+parent)['tree']['sha']
         tree=api('POST','/git/trees',{'base_tree':tree_base,'tree':entries})
-        commit=api('POST','/git/commits',{'message':'Add storage health preflight and frozen quality evaluation','tree':tree['sha'],'parents':[parent]})
+        commit=api('POST','/git/commits',{'message':'Add safe evidence retention and record release acceptance','tree':tree['sha'],'parents':[parent]})
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds private storage diagnostics and an early research stop: allowlisted archive validation, expanded/compressed size and file-count metrics, SQLite integrity checks and a snapshot-version freshness indicator on the dashboard. Diagnostics run through the serialized workflow without paid calls; research blocks before reservations if the ledger is missing/corrupt or capacity reaches 90%. This is not automatic history compaction and cannot predict in-flight growth.\n\nAdds a frozen, manually labelled 14-case synthetic extraction evaluation. Preparation removes reference labels; scoring validates source evidence and reports per-case errors, false shortlists, misses, precision/recall and designated unknown-field violations. Missing predictions fail. No model calls are made by this tool, and scorer regression tests do not establish model quality. Operator documentation now describes current Telegram, recovery and acceptance behavior.\n\nValidation: 81 Python tests and 16 Node tests pass; dashboard syntax checked. Separately, merged PR14 was deployed, its backup-only workflow succeeded, a downloaded backup checksum passed, and an isolated restore rehearsal left live state unchanged. Read-only live database integrity checks passed. No paid model/search calls or actual live rollback were performed. Live quality evaluation, cloud recovery drills and active-history storage policy remain release work.')
-        pr=prs[0] if prs else api('POST','/pulls',{'title':'Add storage health checks and frozen quality evaluation','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Add storage health checks and frozen quality evaluation','body':body})
+        body=('Adds private immutable cold archives for terminal-run evidence, keeping the newest 20 runs and at least 30 days in active state. Active/resumable work, unresolved questions and outstanding delivery receipts are protected. Upload checksum and readback must pass before evidence leaves hot state; a pre-maintenance backup and conditional snapshot write protect concurrent changes. Catalog/registry/financial continuity databases remain intact. Adds weekday serialized maintenance, manual archive controls/downloads and visible budget reservations. This does not prune growing databases or delete cold archives.\n\nAdds isolated production-code recovery drills to CI and a repeatable explicit paid acceptance command with a $0.40 envelope in the existing cloud gate. Acceptance outputs and candidate data stay private. Operator documentation records the conservative no-refund/no-reset budget policy and release limitations.\n\nLive evidence: merged PR15 diagnostics passed; a fresh same-snapshot restore completed with budget, question, outbox, catalog and private preference continuity verified. The configured model completed 14 synthetic extraction cases and four reviewer probes. Strict result was 8/14, with zero false shortlists/misses within that sample. Four failures are exact unknown-string mismatches; two concern closed/signal category or title contracts. The original report is unchanged; no held-out real-market accuracy claim is made. Reviewer rejected two explicit blockers and marked two uncertain proposals manual_review.\n\nValidation: 85 Python tests, 17 Node tests, five isolated recovery drills and dashboard syntax checks pass. Drills inject external outcomes; they do not send real Telegram messages or prove all cloud/network failure behavior. Real old-run archival awaits eligible data; held-out real-source quality and growing-database capacity remain release work. No multi-worker benchmark or budget increase.')
+        pr=prs[0] if prs else api('POST','/pulls',{'title':'Add evidence retention and record live acceptance results','head':BRANCH,'base':'main','body':body,'draft':True})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Add evidence retention and record live acceptance results','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':
