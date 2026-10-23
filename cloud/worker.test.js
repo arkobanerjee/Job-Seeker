@@ -42,8 +42,16 @@ test('Telegram requires secret and owner, answers once and resumes saved run',as
  const original=globalThis.fetch;let dispatches=0;
  globalThis.fetch=async(url,options)=>{dispatches++;assert.equal(JSON.parse(options.body).inputs.run_id,q.run_id);return new Response(null,{status:204})};
  try{
-  assert.equal((await worker.fetch(hook({...message,text:'yes',reply_to_message:{message_id:42,from:{is_bot:true}}}),e)).status,200);
+  assert.equal((await worker.fetch(hook({...message,text:'yes'}),e)).status,200);
   await worker.fetch(hook({...message,text:'/answer '+q.id+' no'}),e);
   assert.equal(dispatches,1);assert.equal((await (await e.STATE.get('answers/'+q.id+'.json')).json()).answer,'yes');
  }finally{globalThis.fetch=original}
+});
+
+test('standalone reply cannot select between multiple pending questions',async()=>{
+ const e=env();e.TELEGRAM_WEBHOOK_SECRET='hook';e.TELEGRAM_CHAT_ID='123';
+ for(const id of ['a','b'])await worker.fetch(req('/api/question','POST',{id:id.repeat(24),run_id:'c'.repeat(32),revision:'rev',prompt:'Question?'}),e);
+ const request=new Request('https://jobs.example/telegram',{method:'POST',headers:{'Content-Type':'application/json','X-Telegram-Bot-Api-Secret-Token':'hook'},body:JSON.stringify({message:{chat:{id:123,type:'private'},from:{id:123},text:'Received'}})});
+ assert.deepEqual(await (await worker.fetch(request,e)).json(),{ignored:true});
+ assert.equal((await e.STATE.list({prefix:'answers/'})).objects.length,0);
 });

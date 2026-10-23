@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/telegram-direct-replies'
+BRANCH='codex/telegram-single-question'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -34,9 +34,9 @@ def main():
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Telegram questions now open a normal reply field and keep question IDs internal. Saved bot message receipts link plain-text replies to durable questions; the old /answer command remains supported. Owner authentication, immutable answers and serialized resumption are preserved.\n\nValidation: 27 Python tests and 5 Node tests pass, including plain replies and saved message receipts. The previous live command-based question/reply/resume test passed; the new plain-reply interface still needs deployment and live acceptance.')
+        body=('Standalone Telegram answers now resolve to the question when exactly one unanswered question exists. Explicit replies and question-ID commands remain supported; ambiguous messages cannot select among multiple pending questions. Deployment also preserves existing webhook secrets.\n\nValidation: six Node tests pass, including owner checks, standalone replies and ambiguity rejection. This repairs Telegram clients that send plain text without a reply reference.')
         pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Answer Telegram questions with a normal reply','body':body})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Accept plain Telegram answers to a single pending question','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

@@ -20,6 +20,19 @@ export async function webhook(request,env){
         else if((m.reply_to_message.text||'').startsWith('Job Seeker needs input'))return json({error:'Delivery receipt pending'},503);
       }
     }
+    // Ordinary chat text is unambiguous only with exactly one unanswered question.
+    if(!match && typeof m.text==='string' && m.text.trim() && m.text.length<=4000 && !m.text.startsWith('/')){
+      const list=await env.STATE.list({prefix:'questions/',limit:100});
+      if(!list.truncated){
+        const pending=[];
+        for(const item of list.objects){
+          const q=await (await env.STATE.get(item.key)).json();
+          if(!await env.STATE.get('answers/'+q.id+'.json'))pending.push(q);
+          if(pending.length>1)break;
+        }
+        if(pending.length===1)match=[null,pending[0].id,m.text];
+      }
+    }
     if(!match)return json({ignored:true});
     const object=await env.STATE.get('questions/'+match[1]+'.json');
     if(!object)return json({ignored:true});
