@@ -230,3 +230,17 @@ can recover without repeating research. Retry failed notifications in the dashbo
 queues a separate serialized workflow with no search or model calls; weekday scheduled
 workflows also attempt eligible recovery before monitoring. Delivery metadata stays
 authenticated and message content stays inside the private state archive.
+
+## Board activity and competitor discovery
+
+Greenhouse/Lever postings expose their documented parent-board URL so bounded checks
+can collect board observations. Momentum summaries require observations on different
+dates and distinguish provider-reported totals from capped returned samples. A count
+change is source activity, not a future-hiring probability or proof a job closed.
+
+Enable competitors.enabled to reserve up to competitors.max_queries within the
+existing discovery search limit. A lead needs a known seed company and both names
+in a matching source quote. Leads remain explicitly unqualified until separately
+researched. Searches are generated from sanitized company names, capped across the
+whole run, and disabled during monitoring. Model relationship interpretations still
+need review; co-mentions alone are not intended as competitor evidence.

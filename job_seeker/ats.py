@@ -39,8 +39,10 @@ def parse(info,body):
             candidates.append((title,url))
         candidates.sort(key=lambda x:0 if re.search(r'AI|data|machine learning|analytics|LLM|engineer',x[0],re.I) else 1)
         candidates=candidates[:30]
+        total=data.get('meta',{}).get('total') if provider=='greenhouse' else None
+        if not isinstance(total,int) or isinstance(total,bool) or total<0:total=None
         return {'structured_index':True,'text':'Public ATS job index: '+'; '.join(t for t,u in candidates),'links':[u for t,u in candidates],
-                'ats_provider':provider,'ats_tenant':tenant,'api_url':api,'collection_scope':'Bounded sample, at most 30 links; not a complete vacancy census'}
+                'ats_provider':provider,'ats_tenant':tenant,'api_url':api,'returned_count':len(items),'reported_total':total,'collection_scope':'Bounded sample, at most 30 links; not a complete vacancy census'}
     if not isinstance(data,dict) or str(data.get('id'))!=job_id:raise ValueError('ATS posting ID mismatch')
     if provider=='greenhouse':
         title=data.get('title','');location=(data.get('location') or {}).get('name','');content=html.unescape(data.get('content',''))
@@ -51,4 +53,5 @@ def parse(info,body):
         for section in data.get('lists',[]):content+=' '+str(section.get('text',''))+' '+str(section.get('content',''))
     parser=PageText();parser.feed(content)
     text=' '.join(('Title: '+str(title)+' Location: '+str(location)+' '+' '.join(parser.parts)).split())[:18000]
-    return {'text':text,'links':[],'structured_index':False,'ats_provider':provider,'ats_tenant':tenant,'ats_job_id':job_id,'api_url':api}
+    board_url=('https://job-boards.greenhouse.io/'+tenant) if provider=='greenhouse' else ('https://jobs.eu.lever.co/' if 'api.eu.lever.co' in api else 'https://jobs.lever.co/')+tenant
+    return {'text':text,'links':[],'board_url':board_url,'structured_index':False,'ats_provider':provider,'ats_tenant':tenant,'ats_job_id':job_id,'api_url':api}

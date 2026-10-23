@@ -61,3 +61,8 @@ queries = [
 # Separate model context; shares the run spending and model-call limits.
 enabled = false
 max_jobs = 3
+
+[competitors]
+# Reserve one of the existing query slots for evidence-backed expansion.
+enabled = false
+max_queries = 1
