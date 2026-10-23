@@ -22,8 +22,10 @@ class Finding(BaseModel):
     fit: Literal["strong","possible","stretch","conflict"]
     fit_reason: str
     language: str = Field(description="Required/preferred/unknown; do not infer from advertisement language")
+    language_status: Literal['stated','unknown'] | None = Field(default=None,description="Use unknown when the employer states no working-language requirement or preference; otherwise stated. Null only for legacy saved data.")
     location: str
     eligibility: str = Field(description="Employer-stated authorization or sponsorship, otherwise unknown")
+    eligibility_status: Literal['stated','unknown'] | None = Field(default=None,description="Use unknown when employer authorization/sponsorship policy is unstated. A candidate visa does not establish employer eligibility. Null only for legacy saved data.")
     concerns: list[str]
     mandatory_conflicts: list[str] = Field(default_factory=list, description="Confirmed mandatory requirements that contradict the candidate's stated facts. Mandatory German communication conflicts with very basic German even without a CEFR level. Missing information alone is never a conflict.")
 
@@ -43,19 +45,30 @@ def validate_findings(report, records):
             if record: key=record["url"]
         text=" ".join(record.get("text","").split())
         quote=" ".join(f.evidence_quote.split())
+        title=record.get('posting_title') or f.title
         reason=None
         if record.get("http_status")!=200: reason="No fetched page evidence"
         elif len(quote)<30 or quote.casefold() not in text.casefold(): reason="Quote does not match retrieved text"
-        elif f.kind=="vacancy" and record.get("closed_marker"): reason="Page contains an expired/closed vacancy marker"
-        elif f.kind=="vacancy" and (len(f.title)<5 or f.title.casefold() not in text.casefold()): reason="Vacancy title is not present in page text"
+        elif f.kind=="vacancy" and (len(title)<5 or title.casefold() not in text.casefold()): reason="Vacancy title is not present in page text"
         if reason:
             rejected.append({**f.model_dump(),"url":key,"reason":reason,"verification":"unverified"}); continue
-        unique=(key,f.title.casefold())
+        unique=(key,title.casefold())
         if unique in seen: continue
         seen.add(unique)
-        accepted.append({**f.model_dump(),"kind":"excluded" if f.fit=="conflict" or f.mandatory_conflicts else f.kind,"url":key,"observed_at":record["observed_at"],
-                         "availability":"Listing text retrieved; accepting applications not independently confirmed" if f.kind=="vacancy" else "Not a confirmed opening",
-                         "assessment":"Fit and extracted requirements are model assessments; quote/source checks do not prove all claims"})
+        closed=bool(record.get('closed_marker'))
+        item={**f.model_dump(),"kind":"excluded" if closed or f.fit=="conflict" or f.mandatory_conflicts else f.kind,"url":key,"observed_at":record["observed_at"],
+                         "availability":"Closed/expired marker observed; retained for reference only" if closed else "Listing text retrieved; accepting applications not independently confirmed" if f.kind=="vacancy" else "Not a confirmed opening",
+                         "listing_status":"closed" if closed else "not_independently_confirmed",
+                         "assessment":"Fit and extracted requirements are model assessments; quote/source checks do not prove all claims"}
+        item['title']=title
+        for field in ('language','eligibility'):
+            if getattr(f,field+'_status')=='unknown':
+                item[field+'_details']=item[field];item[field]='unknown'
+        if closed:
+            item['rejection_reasons']=['Page contains a closed/expired vacancy marker']
+            marker=record.get('closed_marker_quote')
+            if marker and marker.casefold() in text.casefold():item['rejection_evidence']=[marker]
+        accepted.append(item)
     return accepted,rejected
 
 def write_json(path, data):

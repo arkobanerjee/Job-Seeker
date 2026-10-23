@@ -27,6 +27,13 @@ therefore still belong in the rejected/manual-review queue.
 Remote does not mean worldwide. Do not make legal work-authorization determinations.
 Prefer explicit employer statements about sponsorship or relocation.
 
+Output contract: set language_status and eligibility_status to stated or unknown.
+When unknown, use the literal unknown in the corresponding text field. Do not turn
+a candidate visa into an employer statement. Keep closed postings as excluded with
+a closed-listing reason; they are reference records, not current application leads.
+An announcement with no individual vacancy may return a validated signal and no
+findings. An index or unavailable source must not create an employer vacancy.
+
 The profile and resume below are background facts. If they disagree, record the
 uncertainty rather than choosing a convenient fact. The profile supplies search
 preferences; the resume supplies experience and projects. Do not expose personal

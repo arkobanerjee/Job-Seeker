@@ -230,3 +230,62 @@ product fully accepted, define the representation of unknowns, closed/rejected j
 and signal-only responses, then freeze a separate labelled real-source/held-out set.
 Do not tune to these examples and report a rescore as new held-out performance.
 No two-worker benchmark is authorized by this acceptance run.
+
+
+## Output contract v2 and separate real-source check
+
+New findings explicitly set language_status and eligibility_status to stated or
+unknown. An explicit unknown status produces the canonical text unknown; the original
+explanation is retained in a details field. Legacy records with absent statuses are
+left unchanged rather than silently reinterpreted. A stated status is a model
+assessment, not independent verification of the employer policy or legal eligibility.
+
+A successfully retrieved posting with a closed marker is preserved as excluded,
+with a closed-listing reason and reference-only availability. New captures retain
+the matched marker quotation when available. HTTP 404, network failure or robots
+restrictions remain unavailable/unverified, and never establish closure. A structured
+ATS title takes precedence over a model's paraphrase. Company announcements may
+produce validated signals with no findings; a signal outcome requires source-ID,
+company and quote validation and never counts as a vacancy. The scorer reports
+contract_version=2. The original 8/14 report and original reference labels remain
+unchanged; a changed-contract rescore is not a new held-out result.
+
+On 2026-10-23, a separate six-case real-source set was labelled and frozen before
+model generation. Four employer/ATS pages were retrieved and two URLs returned 404.
+The four retrieved pages included two technically relevant cases and two explicit
+language/seniority conflicts. **6/6 extraction/validation checks passed**, including
+explicit unknown eligibility and both unavailable sources. Shortlist precision and
+recall were 1.0 within this tiny, deliberately selected set. This is not a representative
+labour-market sample, a search-recall measurement, or proof that the jobs remain open.
+It was separate from the earlier synthetic tuning examples, but not an independently
+labelled third-party benchmark. Raw source text, labels and predictions stay private.
+
+Four independent reviewer probes returned one reject for explicit German requirements
+and three manual_review outcomes, including the seniority probe. No proposal received
+an unconditional accept. This conservatism is visible to the operator; do not describe
+it as four decisive reviewer successes. The run retained a $0.25 cloud envelope,
+reserved $0.184 for model calls and observed a $0.0111638 token-cost estimate under
+configured rates. Reservations remain charged; estimates are not invoices.
+
+Use a private frozen case file for further explicitly budgeted checks:
+
+```
+python -m job_seeker.acceptance --cases private/frozen-cases.json --envelope 0.25 --review-ids case-one case-two
+```
+
+The command validates case/review IDs and estimated worst-case call reservations
+before charging the cloud envelope. It stores a private settings/prompt snapshot,
+case-set hash and separate ledger. Labels are excluded from generation context.
+A failing strict score returns a nonzero exit status. Do not run another evaluation
+merely to obtain a favourable outcome; expand and independently label the next set
+before tuning or making broader quality claims.
+
+## Legacy maintenance compatibility
+
+The first live maintenance check exposed a question database predating the cancelled
+column. No archival occurred. The serialized notification-recovery mode migrated the
+live schema with no pending deliveries, then maintenance was retried successfully with no eligible old evidence. Retention now
+also reads old snapshots conservatively: all unanswered legacy questions protect
+associated runs. The newest 20/30-day rules mean there is still no eligible old live
+evidence; actual aged-data archival remains covered by offline tests until eligible
+history naturally exists.

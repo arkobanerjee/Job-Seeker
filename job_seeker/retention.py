@@ -14,7 +14,10 @@ def candidates(root,keep=20,days=30,now=None):
     questions=root/'runs/questions.sqlite3'
     if questions.exists():
         with closing(sqlite3.connect(questions)) as db:
-            protected.update(r[0] for r in db.execute('SELECT run_id FROM questions WHERE answer IS NULL AND cancelled=0'))
+            columns={r[1] for r in db.execute('PRAGMA table_info(questions)')}
+            # Older snapshots predate cancellation. Protect all unanswered legacy questions.
+            clause=' AND cancelled=0' if 'cancelled' in columns else ''
+            protected.update(r[0] for r in db.execute('SELECT run_id FROM questions WHERE answer IS NULL'+clause))
             question_runs=dict(db.execute('SELECT id,run_id FROM questions'))
     outbox=root/'runs/outbox.sqlite3'
     if outbox.exists():

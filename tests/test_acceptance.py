@@ -8,6 +8,15 @@ from job_seeker.runner import Assessment
 
 
 class AcceptanceTests(unittest.TestCase):
+    def test_invalid_evaluation_is_rejected_before_reserving(self):
+        class Cloud:
+            def request(self,path,*args,**kwargs):
+                if path=='settings':return {'config.toml':'[search]\nqueries=[{track="ai",query="synthetic"}]'}
+                raise AssertionError('Invalid evaluation must not reserve funds')
+        with patch('job_seeker.acceptance.Cloud',Cloud):
+            with self.assertRaises(ValueError):quality(envelope=.0001)
+            with self.assertRaises(ValueError):quality(review_ids=['not-in-case-set'])
+
     def test_envelope_precedes_calls_and_labels_stay_out_of_context(self):
         cases=(Path(__file__).parent/'fixtures/quality_cases.json').read_text()
         files={'config.toml':'[search]\nqueries=[{track="ai",query="synthetic"}]',

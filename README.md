@@ -308,3 +308,10 @@ Release acceptance is recorded in DEPLOYMENT.md. The first live synthetic qualit
 run passed 8/14 strict checks, despite no false shortlists or missed suitable roles
 in that sample. Do not interpret passing software tests as complete model acceptance.
 `python -m job_seeker.drills` exercises isolated recovery with no paid services.
+
+
+Output contract v2 adds explicit unknown/stated fact statuses, preserves source-backed
+closed roles as excluded reference records, and accepts validated signal-only company
+announcements. A separate six-case frozen real-source check passed 6/6; its small,
+selected sample is not a measure of market coverage. The original synthetic 8/14
+result is preserved. See DEPLOYMENT.md for reviewer outcomes and benchmark limits.
