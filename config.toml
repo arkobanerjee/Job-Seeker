@@ -56,3 +56,8 @@ queries = [
   { track = "ai", route = "product", query = 'Germany company launches AI product engineering team' },
   { track = "data", route = "organization", query = 'Germany company expansion data engineering team announcement' },
 ]
+
+[review]
+# Separate model context; shares the run spending and model-call limits.
+enabled = false
+max_jobs = 3

@@ -36,7 +36,7 @@ class QuestionTests(unittest.TestCase):
             with patch("job_seeker.telegram.send",return_value=42) as send:
                 send_question(store,q)
                 self.assertTrue(send.call_args.kwargs['force_reply'])
-                self.assertNotIn(q['id'],send.call_args.args[0])
+                self.assertNotIn(q['id'],send.call_args.kwargs['text'])
             message={"chat":{"id":123,"type":"private"},"from":{"id":123},"text":"Yes","reply_to_message":{"message_id":42,"from":{"is_bot":True}}}
             self.assertEqual(accept_reply(store,message,123),'run')
             self.assertEqual(store.get(q['id'])['answer'],'Yes')

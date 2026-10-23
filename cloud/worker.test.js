@@ -107,3 +107,13 @@ test('history resumes only a recoverable saved cloud run',async()=>{
  const original=globalThis.fetch;globalThis.fetch=async()=>new Response(null,{status:204});
  try{assert.equal((await worker.fetch(req('/api/resume','POST',{run_id}),e)).status,200)}finally{globalThis.fetch=original}
 });
+
+test('notification recovery dispatches separately and delivery metadata is private',async()=>{
+ const e=env();e.GITHUB_TOKEN='dispatch';e.GITHUB_REPOSITORY='owner/repo';e.GITHUB_REF='main';
+ assert.equal((await worker.fetch(req('/api/notifications','GET',null,'wrong'),e)).status,401);
+ await worker.fetch(req('/api/notifications','PUT',[{id:'completion:one',status:'pending',attempts:1}]),e);
+ assert.equal((await (await worker.fetch(req('/api/notifications'),e)).json())[0].status,'pending');
+ const original=globalThis.fetch;let mode;
+ globalThis.fetch=async(url,options)=>{mode=JSON.parse(options.body).inputs.mode;return new Response(null,{status:204})};
+ try{assert.equal((await worker.fetch(req('/api/run','POST',{mode:'notifications'}),e)).status,200);assert.equal(mode,'notifications')}finally{globalThis.fetch=original}
+});
