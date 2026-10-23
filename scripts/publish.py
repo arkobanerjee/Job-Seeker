@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/job-discovery-trails'
+BRANCH='codex/telegram-direct-replies'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -34,9 +34,9 @@ def main():
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds job discovery evidence paths in both dashboards and durable agent clarification questions. The assessor can pause for candidate input; owner-only Telegram webhook replies save an immutable answer and dispatch the same cloud run to resume. Original budget envelopes and per-call limits remain in force.\n\nValidation: offline evidence, restart, waiting/answer/resume, wrong-owner, stale-answer, delivery-failure and webhook tests. Live Telegram acceptance and webhook provisioning remain pending. No paid search was run for these changes.\n\nKnown remaining work: dashboard question controls and automatic notification delivery retry.')
+        body=('Telegram questions now open a normal reply field and keep question IDs internal. Saved bot message receipts link plain-text replies to durable questions; the old /answer command remains supported. Owner authentication, immutable answers and serialized resumption are preserved.\n\nValidation: 27 Python tests and 5 Node tests pass, including plain replies and saved message receipts. The previous live command-based question/reply/resume test passed; the new plain-reply interface still needs deployment and live acceptance.')
         pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Add discovery trails and durable Telegram clarifications','body':body})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Answer Telegram questions with a normal reply','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':
