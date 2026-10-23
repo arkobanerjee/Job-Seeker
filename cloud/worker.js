@@ -1,15 +1,19 @@
 // One-owner control plane. All data endpoints require a high-entropy bearer secret.
 import { page } from './page.js';
+import { webhook,questionApi } from './questions.js';
 const headers = {'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const reply = (body,status=200) => new Response(JSON.stringify(body),{status,headers});
 const keyFor = path => path === '/api/state' ? 'state/latest.zip' : path === '/api/catalog' ? 'catalog/latest.json' : null;
 export default {
   async fetch(request,env) {
     const u=new URL(request.url);
+    if(u.pathname==='/telegram') return webhook(request,env);
     if(u.pathname==='/' && request.method==='GET') return new Response(page,{headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store','Content-Security-Policy':"default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'"}});
     if(!env.APP_TOKEN || request.headers.get('Authorization')!==`Bearer ${env.APP_TOKEN}`) return reply({error:'Unauthorized'},401);
     if(request.headers.get('Origin') && request.headers.get('Origin')!==u.origin) return reply({error:'Invalid origin'},403);
     try {
+      const questionResponse=await questionApi(request,env,u.pathname);
+      if(questionResponse)return questionResponse;
       if(u.pathname==='/api/budget' && request.method==='GET') {
         const object=await env.STATE.get('budget.json');
         return object ? reply(await object.json()) : reply({error:'Initialize state before running'},409);

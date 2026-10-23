@@ -30,3 +30,20 @@ test('decision validation and cross-origin protection',async()=>{
   const r=req('/api/decision','POST',{id:'a'.repeat(24),decision:'apply_anyway',note:'Try English team'});
   r.headers.set('Origin','https://attacker.example');assert.equal((await worker.fetch(r,e)).status,403);
 });
+
+test('Telegram requires secret and owner, answers once and resumes saved run',async()=>{
+ const e=env();e.TELEGRAM_WEBHOOK_SECRET='hook';e.TELEGRAM_CHAT_ID='123';e.GITHUB_TOKEN='dispatch';e.GITHUB_REPOSITORY='owner/repo';e.GITHUB_REF='main';
+ const q={id:'a'.repeat(24),run_id:'b'.repeat(32),revision:'rev',prompt:'Remote only?'};
+ await worker.fetch(req('/api/question','POST',q),e);
+ const message={chat:{type:'private',id:123},from:{id:123},text:'/answer '+q.id+' yes'};
+ const hook=(m,secret='hook')=>new Request('https://jobs.example/telegram',{method:'POST',headers:{'Content-Type':'application/json','X-Telegram-Bot-Api-Secret-Token':secret},body:JSON.stringify({message:m})});
+ assert.equal((await worker.fetch(hook(message,'wrong'),e)).status,401);
+ await worker.fetch(hook({...message,from:{id:999}}),e);assert.equal(await e.STATE.get('answers/'+q.id+'.json'),null);
+ const original=globalThis.fetch;let dispatches=0;
+ globalThis.fetch=async(url,options)=>{dispatches++;assert.equal(JSON.parse(options.body).inputs.run_id,q.run_id);return new Response(null,{status:204})};
+ try{
+  assert.equal((await worker.fetch(hook(message),e)).status,200);
+  await worker.fetch(hook({...message,text:'/answer '+q.id+' no'}),e);
+  assert.equal(dispatches,1);assert.equal((await (await e.STATE.get('answers/'+q.id+'.json')).json()).answer,'yes');
+ }finally{globalThis.fetch=original}
+});

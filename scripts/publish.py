@@ -34,8 +34,9 @@ def main():
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Job records now include search queries, result ranks, observation times and discovery paths reconstructed from saved search results and observed links. Both dashboards expose the evidence under How was this found; historical results without evidence remain explicitly unavailable.\n\nValidation: 22 Python tests and 4 Node tests pass, including direct results, multi-page evidence paths, cycles, redirects and restart recovery. No paid searches or production deployment performed for this change. Telegram questions remain a separate unfinished milestone.')
+        body=('Adds job discovery evidence paths in both dashboards and durable agent clarification questions. The assessor can pause for candidate input; owner-only Telegram webhook replies save an immutable answer and dispatch the same cloud run to resume. Original budget envelopes and per-call limits remain in force.\n\nValidation: offline evidence, restart, waiting/answer/resume, wrong-owner, stale-answer, delivery-failure and webhook tests. Live Telegram acceptance and webhook provisioning remain pending. No paid search was run for these changes.\n\nKnown remaining work: dashboard question controls and automatic notification delivery retry.')
         pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Add discovery trails and durable Telegram clarifications','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

@@ -17,7 +17,7 @@ def allowed(name):
     if p.is_absolute() or '..' in p.parts or '\\' in name or ':' in name: return False
     if name in ('config.toml','prompts/master.md','private/profile.md','private/resume.md'): return True
     if p.parts[0:1]!=('runs',): return False
-    if name in ('runs/budget.sqlite3','runs/catalog.sqlite3'): return True
+    if name in ('runs/budget.sqlite3','runs/catalog.sqlite3','runs/questions.sqlite3'): return True
     return len(p.parts)==3 and len(p.parts[1])==32 and all(c in '0123456789abcdef' for c in p.parts[1]) and p.suffix in ('.json','.md')
 
 def pack(root=ROOT):
@@ -67,6 +67,9 @@ class Cloud:
         self.request('state','PUT',pack(),True)
         catalog=Catalog(ROOT/'runs'/'catalog.sqlite3')
         self.request('catalog','PUT',catalog.list())
+        from .questions import Questions
+        for question in Questions(ROOT/'runs/questions.sqlite3').pending():
+            self.request('question','POST',question)
 
     def settings(self):
         files={name:(ROOT/name).read_text(encoding='utf-8') for name in ('config.toml','prompts/master.md','private/profile.md','private/resume.md') if (ROOT/name).exists()}
@@ -93,7 +96,18 @@ def run_cloud(resume=None):
     settings,_=load_settings()
     # Reserve the entire run ceiling before any paid action. A killed runner cannot
     # reset global accounting by losing its last snapshot. No automatic refunds.
-    cloud.request('reserve','POST',{'id':uuid4().hex,'amount':settings.limits.run_usd})
+    if not resume:
+        cloud.request('reserve','POST',{'id':uuid4().hex,'amount':settings.limits.run_usd})
+    else:
+        import re
+        if not re.fullmatch(r'[a-f0-9]{32}',resume) or not (ROOT/'runs'/resume/'checkpoint.json').exists(): raise ValueError('Unknown cloud run')
+        checkpoint=json.loads((ROOT/'runs'/resume/'checkpoint.json').read_text(encoding='utf-8'))
+        if not checkpoint.get('cloud_envelope'): raise ValueError('Run has no recorded cloud budget envelope')
+        from .questions import Questions
+        questions=Questions(ROOT/'runs/questions.sqlite3')
+        for question in questions.pending():
+            answer=cloud.request('answer/'+question['id'])
+            if answer.get('answer') is not None: questions.answer(question['id'],question['revision'],answer['answer'])
     catalog=Catalog(ROOT/'runs'/'catalog.sqlite3')
     known={x['id'] for x in catalog.list()}
     for ident,decision in cloud.request('decisions').items():
