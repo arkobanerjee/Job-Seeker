@@ -18,6 +18,7 @@ class Registry:
         path.parent.mkdir(parents=True,exist_ok=True);self.path=path
         with closing(sqlite3.connect(path)) as db,db:
             db.executescript("""
+            CREATE TABLE IF NOT EXISTS assessments(url TEXT, content_hash TEXT, context_hash TEXT, payload TEXT, PRIMARY KEY(url,content_hash,context_hash));
             CREATE TABLE IF NOT EXISTS companies(id TEXT PRIMARY KEY,name TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS sources(url TEXT PRIMARY KEY,host TEXT,ats TEXT);
             CREATE TABLE IF NOT EXISTS company_sources(company_id TEXT,url TEXT,run_id TEXT,PRIMARY KEY(company_id,url,run_id));
@@ -56,6 +57,18 @@ class Registry:
                         previous=item['content_hash']
                 sources.append({'url':url,'host':host,'ats':ats,'official_status':'unverified','history':history[-20:]})
             return {'companies':companies,'sources':sources}
+    def monitor_targets(self,limit):
+        with closing(sqlite3.connect(self.path)) as db:
+            return [r[0] for r in db.execute("SELECT s.url FROM sources s LEFT JOIN source_observations o ON s.url=o.url GROUP BY s.url ORDER BY MAX(o.observed_at) ASC,s.url LIMIT ?",(limit,))]
+    def cached_assessment(self,url,text,context_hash):
+        digest=hashlib.sha256(text.encode()).hexdigest()
+        with closing(sqlite3.connect(self.path)) as db:
+            row=db.execute("SELECT payload FROM assessments WHERE url=? AND content_hash=? AND context_hash=?",(url,digest,context_hash)).fetchone()
+            return json.loads(row[0]) if row else None
+    def save_assessment(self,url,text,context_hash,payload):
+        digest=hashlib.sha256(text.encode()).hexdigest()
+        with closing(sqlite3.connect(self.path)) as db,db:
+            db.execute("INSERT OR REPLACE INTO assessments VALUES(?,?,?,?)",(url,digest,context_hash,json.dumps(payload)))
     def import_runs(self,root):
         for checkpoint in root.glob('*/checkpoint.json'):
             state=json.loads(checkpoint.read_text(encoding='utf-8'))

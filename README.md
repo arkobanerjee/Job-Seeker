@@ -142,3 +142,17 @@ The registry is populated from saved checkpoints and future research. It does no
 automatically schedule source checks, collect structured ATS feeds, or discover official
 career landing pages. Those are the next monitoring milestone. The SQLite registry
 travels in the private cloud snapshot and its dashboard export is authenticated.
+
+## Repeat monitoring
+
+Use Check saved sources in the cloud dashboard (or python -m job_seeker.cloud monitor
+in the configured GitHub workflow). Monitoring revisits the least recently observed
+sources within page and spending caps and issues no discovery search queries.
+Assessments are reused only when source input, links, policy, profile, prompt, model
+settings, schema and search track match. Changed input gets assessed again. Failed
+fetches remain unavailable, not closed. Cached findings retain human decisions.
+
+Set monitoring.enabled=true in config.toml for local monitoring. No recurring schedule
+is enabled yet. First checks may require fresh assessments because older runs did not
+cache them. Cloud still reserves the configured whole-run ceiling, even if a check
+ultimately needs no model calls; a zero-cost repeat is not guaranteed.

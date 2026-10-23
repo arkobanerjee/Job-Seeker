@@ -63,3 +63,14 @@ test('registry stays private and validates its container schema',async()=>{
  assert.equal((await worker.fetch(req('/api/registry','PUT',registry),e)).status,200);
  assert.deepEqual(await (await worker.fetch(req('/api/registry'),e)).json(),registry);
 });
+
+test('monitor button dispatches a bounded monitor workflow mode',async()=>{
+ const e=env();e.GITHUB_TOKEN='dispatch';e.GITHUB_REPOSITORY='owner/repo';e.GITHUB_REF='main';
+ const original=globalThis.fetch;let body;
+ globalThis.fetch=async(url,options)=>{body=JSON.parse(options.body);return new Response(null,{status:204})};
+ try{
+  assert.equal((await worker.fetch(req('/api/run','POST',{mode:'monitor'}),e)).status,200);
+  assert.equal(body.inputs.mode,'monitor');
+  assert.equal((await worker.fetch(req('/api/run','POST',{mode:'unlimited'}),e)).status,400);
+ }finally{globalThis.fetch=original}
+});

@@ -152,7 +152,7 @@ class SourceTools:
                     "source_id":hashlib.sha256(url.encode()).hexdigest()[:16],
                     "observed_at":datetime.now(timezone.utc).isoformat(),"closed_marker":closed,"links":links}
         except (ValueError,OSError,http.client.HTTPException):
-            record={"url":url,"error":"Retrieval unavailable, blocked by policy, too large, or unsupported; no closure inference"}
+            record={"url":url,"observed_at":datetime.now(timezone.utc).isoformat(),"error":"Retrieval unavailable, blocked by policy, too large, or unsupported; no closure inference"}
         with self.lock:
             self.allowed.update(record.get("links",[])); self.records[url]=record
             self.events.append({"type":"fetch","url":url,"ok":record.get("http_status")==200})
