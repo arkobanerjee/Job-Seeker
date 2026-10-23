@@ -89,15 +89,32 @@ def bootstrap():
         cloud.sync()
         cloud.settings()
 
-def run_cloud(resume=None,monitor=False):
+def run_cloud(resume=None,monitor=False,scheduled=False):
     # Only the serialized GitHub workflow may own this state. No parallel local writes.
     if os.getenv('GITHUB_ACTIONS')!='true': raise ValueError('Cloud worker runs through the serialized GitHub Actions workflow')
+    if not resume: os.environ['JOB_SEEKER_SCHEDULED']='true' if scheduled else 'false'
     if not resume: os.environ['JOB_SEEKER_MONITORING']='true' if monitor else 'false'
     cloud=Cloud(); unpack(cloud.request('state'))
     for name,content in cloud.request('settings').items():
         if name not in ('config.toml','prompts/master.md','private/profile.md','private/resume.md') or not isinstance(content,str): raise ValueError('Unexpected cloud settings')
         target=ROOT/name; target.parent.mkdir(exist_ok=True,parents=True); target.write_text(content,encoding='utf-8')
     settings,_=load_settings()
+    if scheduled:
+        from .monitoring import scheduled_cap
+        from .questions import Questions
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        reason=None
+        if not settings.monitoring.schedule_enabled: reason='schedule_disabled'
+        elif Questions(ROOT/'runs/questions.sqlite3').pending(): reason='waiting_for_user'
+        elif scheduled_cap(settings,cloud.request('budget')) is None: reason='budget_review_required'
+        if reason:
+            cloud.request('monitor-status','PUT',{'status':'skipped','reason':reason})
+            return None,{'status':'skipped','reason':reason,'findings':[]}
+        date=datetime.now(ZoneInfo('Europe/Berlin')).date().isoformat()
+        claim=cloud.request('schedule-claim','POST',{'date':date})
+        if not claim.get('claimed'): return None,{'status':'skipped','reason':'already_checked_today','findings':[]}
+        settings.limits.run_usd=min(settings.limits.run_usd,settings.monitoring.daily_run_usd)
     # Reserve the entire run ceiling before any paid action. A killed runner cannot
     # reset global accounting by losing its last snapshot. No automatic refunds.
     if not resume:
@@ -119,11 +136,12 @@ def run_cloud(resume=None,monitor=False):
     from .runner import run
     folder,result=run(resume=resume,on_checkpoint=cloud.sync)
     cloud.sync()
+    if scheduled: cloud.request('monitor-status','PUT',{'status':result['status'],'run_id':result['run_id']})
     return folder,result
 
 def main():
     import argparse
-    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','settings']); parser.add_argument('--run-id')
+    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','scheduled','settings']); parser.add_argument('--run-id')
     args=parser.parse_args()
     if args.command=='bootstrap': bootstrap(); print('Private cloud state initialized')
     elif args.command=='settings':
@@ -131,8 +149,8 @@ def main():
         settings,base=load_settings(); render_prompt(settings,base)
         Cloud().settings(); print('Private cloud settings updated for subsequent runs')
     else:
-        _,result=run_cloud(args.run_id,monitor=args.command=='monitor')
-        print(json.dumps({'run_id':result['run_id'],'status':result['status'],'findings':len(result['findings'])}))
+        _,result=run_cloud(args.run_id,monitor=args.command in ('monitor','scheduled'),scheduled=args.command=='scheduled')
+        print(json.dumps({'run_id':result.get('run_id'),'status':result['status'],'findings':len(result['findings'])}))
         if result.get('error_type'): raise SystemExit(1)
 
 if __name__=='__main__': main()

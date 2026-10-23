@@ -55,8 +55,9 @@ Never upload `.env`, private/, or runs/ to GitHub, including as Actions artifact
    bounded search and verify private data access, model results, rejected-role decisions,
    checkpoint uploads and notifications before enabling a schedule.
 
-The research workflow currently starts only through workflow_dispatch, including the
-dashboard's Start search button. It uses one concurrency group and never cancels an
+The research workflow accepts workflow_dispatch from the dashboard and a daily
+09:17 Europe/Berlin schedule. Scheduled research requires monitoring.schedule_enabled
+in private cloud settings and sufficient remaining budget. It uses one concurrency group and never cancels an
 active run. Resumption accepts a run ID in the workflow's optional input. Never run
 independent cloud writers against the same bucket. Local runs after migration use a
 separate ledger and are not combined with cloud spending; use cloud as the sole live

@@ -8,10 +8,13 @@ def notify(result):
     if not token or not chat or not chat.lstrip("-").isdigit():
         raise ValueError("Set TELEGRAM_BOT_TOKEN and your TELEGRAM_CHAT_ID in .env")
     findings=result.get("findings",[])
+    if result.get("scheduled"): findings=[f for f in findings if f.get("opportunity_change") in ("new","changed")]
     text=(f"Job Seeker: {result['status']}\n"
           f"Shortlist: {sum(x['kind']=='vacancy' for x in findings)}\n"
           f"Rejected / manual review: {sum(x['kind']=='excluded' for x in findings)}\n"
           f"Run: {result['run_id']}\nOpen your dashboard to review. No applications sent.")
+    if result.get("scheduled"):
+        text+="\nNew/changed opportunities:\n"+"\n".join((f.get("company","")+" — "+f.get("title","")+" ("+f.get("opportunity_change","")+")")[:250] for f in findings[:5])
     send(text)
 
 def send(text,force_reply=False):

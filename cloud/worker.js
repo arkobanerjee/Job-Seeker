@@ -14,6 +14,18 @@ export default {
     try {
       const questionResponse=await questionApi(request,env,u.pathname);
       if(questionResponse)return questionResponse;
+      if(u.pathname==='/api/monitor-status' && request.method==='GET') {
+        const object=await env.STATE.get('monitor-status.json');return reply(object?await object.json():{status:'not_checked'});
+      }
+      if(u.pathname==='/api/monitor-status' && request.method==='PUT') {
+        const body=await request.json();
+        if(!['skipped','completed','partial','failed','waiting_user'].includes(body.status))return reply({error:'Invalid status'},400);
+        await env.STATE.put('monitor-status.json',JSON.stringify({...body,at:new Date().toISOString()}));return reply({saved:true});
+      }
+      if(u.pathname==='/api/schedule-claim' && request.method==='POST') {
+        const {date}=await request.json();if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return reply({error:'Invalid date'},400);
+        const stored=await env.STATE.put('schedule/'+date+'.json',JSON.stringify({date}),{onlyIf:{etagDoesNotMatch:'*'}});return reply({claimed:!!stored});
+      }
       if(u.pathname==='/api/budget' && request.method==='GET') {
         const object=await env.STATE.get('budget.json');
         return object ? reply(await object.json()) : reply({error:'Initialize state before running'},409);

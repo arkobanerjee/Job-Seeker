@@ -36,6 +36,11 @@ queries = [
 telegram = false
 
 [monitoring]
+schedule_enabled = false
+daily_run_usd = 0.25
 # True revisits saved sources instead of issuing web searches.
 enabled = false
 max_sources = 12
+
+# Daily workflow runs at 09:17 Europe/Berlin, subject to these settings.
+# Enable explicitly in the private cloud config after deployment acceptance.

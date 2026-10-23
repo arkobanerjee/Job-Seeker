@@ -28,6 +28,9 @@ class Catalog:
         with closing(sqlite3.connect(self.path)) as db,db:
             for f in findings:
                 ident=hashlib.sha256((f["url"]+"\n"+f["title"].casefold()).encode()).hexdigest()[:24]
+                previous=db.execute("SELECT payload FROM jobs WHERE id=?",(ident,)).fetchone()
+                from .monitoring import change_kind
+                f['opportunity_change']=change_kind(json.loads(previous[0]) if previous else None,f)
                 data=json.dumps(f,ensure_ascii=False)
                 db.execute("INSERT INTO jobs(id,payload,first_seen,last_seen) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,last_seen=excluded.last_seen",(ident,data,now,now))
                 db.execute("INSERT OR REPLACE INTO observations VALUES(?,?,?,?)",(ident,run_id,data,now))
