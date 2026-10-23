@@ -36,6 +36,9 @@ def deploy_worker(values,github_dispatch=False):
                   {'type':'plain_text','name':'GITHUB_REPOSITORY','text':REPO},
                   {'type':'plain_text','name':'GITHUB_REF','text':'main'}]
         if github_dispatch and values.get('GITHUB_DEPLOY_TOKEN'): bindings.append({'type':'secret_text','name':'GITHUB_TOKEN','text':values['GITHUB_DEPLOY_TOKEN']})
+        # Preserve the already configured owner identity and webhook verification.
+        for name in ('TELEGRAM_WEBHOOK_SECRET','TELEGRAM_CHAT_ID'):
+            if values.get(name): bindings.append({'type':'secret_text','name':name,'text':values[name]})
         metadata={'main_module':'worker.js','compatibility_date':'2026-10-23','bindings':bindings}
         parts={'metadata':(None,json.dumps(metadata),'application/json')}
         for name in ('worker.js','page.js','questions.js'):
