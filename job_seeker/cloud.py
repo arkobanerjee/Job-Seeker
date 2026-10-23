@@ -17,7 +17,7 @@ def allowed(name):
     if p.is_absolute() or '..' in p.parts or '\\' in name or ':' in name: return False
     if name in ('config.toml','prompts/master.md','private/profile.md','private/resume.md'): return True
     if p.parts[0:1]!=('runs',): return False
-    if name in ('runs/budget.sqlite3','runs/catalog.sqlite3','runs/questions.sqlite3'): return True
+    if name in ('runs/budget.sqlite3','runs/catalog.sqlite3','runs/questions.sqlite3','runs/registry.sqlite3'): return True
     return len(p.parts)==3 and len(p.parts[1])==32 and all(c in '0123456789abcdef' for c in p.parts[1]) and p.suffix in ('.json','.md')
 
 def pack(root=ROOT):
@@ -67,6 +67,9 @@ class Cloud:
         self.request('state','PUT',pack(),True)
         catalog=Catalog(ROOT/'runs'/'catalog.sqlite3')
         self.request('catalog','PUT',catalog.list())
+        from .registry import Registry
+        registry=Registry(ROOT/'runs/registry.sqlite3'); registry.import_runs(ROOT/'runs')
+        self.request('registry','PUT',registry.export())
         from .questions import Questions
         for question in Questions(ROOT/'runs/questions.sqlite3').pending():
             self.request('question','POST',question)

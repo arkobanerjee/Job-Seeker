@@ -55,3 +55,11 @@ test('standalone reply cannot select between multiple pending questions',async()
  assert.deepEqual(await (await worker.fetch(request,e)).json(),{ignored:true});
  assert.equal((await e.STATE.list({prefix:'answers/'})).objects.length,0);
 });
+
+test('registry stays private and validates its container schema',async()=>{
+ const e=env();assert.equal((await worker.fetch(req('/api/registry','GET',null,'wrong'),e)).status,401);
+ assert.equal((await worker.fetch(req('/api/registry','PUT',{companies:'bad',sources:[]}),e)).status,400);
+ const registry={companies:[{name:'Example',sources:[]}],sources:[]};
+ assert.equal((await worker.fetch(req('/api/registry','PUT',registry),e)).status,200);
+ assert.deepEqual(await (await worker.fetch(req('/api/registry'),e)).json(),registry);
+});

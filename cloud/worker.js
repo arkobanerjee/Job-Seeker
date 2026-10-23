@@ -64,6 +64,15 @@ export default {
         await env.STATE.put(`decisions/${b.id}`,JSON.stringify({decision:b.decision,note:b.note,at:new Date().toISOString()}));
         return reply({saved:true});
       }
+      if(u.pathname==='/api/registry' && request.method==='GET') {
+        const object=await env.STATE.get('registry/latest.json');
+        return reply(object?await object.json():{companies:[],sources:[]});
+      }
+      if(u.pathname==='/api/registry' && request.method==='PUT') {
+        const body=await request.json();
+        if(!Array.isArray(body.companies)||!Array.isArray(body.sources)||JSON.stringify(body).length>2000000)return reply({error:'Invalid registry'},400);
+        await env.STATE.put('registry/latest.json',JSON.stringify(body));return reply({saved:true});
+      }
       const key=keyFor(u.pathname);
       if(key && request.method==='GET') {
         const object=await env.STATE.get(key);
