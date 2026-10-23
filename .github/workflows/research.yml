@@ -10,7 +10,7 @@ on:
         required: false
         default: discovery
         type: choice
-        options: [discovery, monitor]
+        options: [discovery, monitor, notifications]
       run_id:
         description: 'Optional saved run ID to resume'
         required: false
@@ -48,9 +48,12 @@ jobs:
         shell: bash
         run: |
           if [ "$RESEARCH_EVENT" = "schedule" ]; then
+            python -m job_seeker.cloud notifications
             python -m job_seeker.cloud scheduled
           elif [ -n "$RESUME_RUN_ID" ]; then
             python -m job_seeker.cloud run --run-id "$RESUME_RUN_ID"
+          elif [ "$RESEARCH_MODE" = "notifications" ]; then
+            python -m job_seeker.cloud notifications
           elif [ "$RESEARCH_MODE" = "monitor" ]; then
             python -m job_seeker.cloud monitor
           else

@@ -68,6 +68,10 @@ class Signals(Strict):
     max_queries: int = Field(default=2,ge=1,le=5)
     queries: list[SignalQuery] = Field(default_factory=list,max_length=20)
 
+class ReviewSettings(Strict):
+    enabled: bool = False
+    max_jobs: int = Field(default=3,ge=1,le=10)
+
 class Settings(Strict):
     model: ModelSettings = Field(default_factory=ModelSettings)
     limits: Limits = Field(default_factory=Limits)
@@ -76,6 +80,7 @@ class Settings(Strict):
     notifications: Notifications = Field(default_factory=Notifications)
     monitoring: Monitoring = Field(default_factory=Monitoring)
     signals: Signals = Field(default_factory=Signals)
+    review: ReviewSettings = Field(default_factory=ReviewSettings)
 
 def load_settings(path=None):
     path=Path(path or ROOT/"config.toml").resolve()

@@ -48,11 +48,14 @@ class Questions:
         with closing(sqlite3.connect(self.path)) as db,db:
             db.execute("UPDATE questions SET delivered=1,message_id=? WHERE id=?",(message_id,ident))
 
-def send_question(store,question):
+def send_question(store,question,on_checkpoint=None):
     from .telegram import send
     if question["delivered"]: return
-    message_id=send("Job Seeker needs input\n"+question["prompt"]+"\nWhy: "+question["reason"]+
+    from .outbox import Outbox
+    outbox=Outbox(store.path.with_name("outbox.sqlite3"))
+    outbox.enqueue("question:"+question["id"],"Job Seeker needs input\n"+question["prompt"]+"\nWhy: "+question["reason"]+
          "\nReply directly to this message with your answer.",force_reply=True)
+    message_id=outbox.deliver("question:"+question["id"],before_send=on_checkpoint)
     store.delivered(question["id"],message_id)
 
 def accept_reply(store,message,owner_chat):

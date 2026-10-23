@@ -17,7 +17,7 @@ def allowed(name):
     if p.is_absolute() or '..' in p.parts or '\\' in name or ':' in name: return False
     if name in ('config.toml','prompts/master.md','private/profile.md','private/resume.md'): return True
     if p.parts[0:1]!=('runs',): return False
-    if name in ('runs/budget.sqlite3','runs/catalog.sqlite3','runs/questions.sqlite3','runs/registry.sqlite3'): return True
+    if name in ('runs/budget.sqlite3','runs/catalog.sqlite3','runs/questions.sqlite3','runs/registry.sqlite3','runs/outbox.sqlite3'): return True
     return len(p.parts)==3 and len(p.parts[1])==32 and all(c in '0123456789abcdef' for c in p.parts[1]) and p.suffix in ('.json','.md')
 
 def pack(root=ROOT):
@@ -69,6 +69,8 @@ class Cloud:
         self.request('catalog','PUT',catalog.list())
         from .history import run_history
         self.request('runs','PUT',run_history(ROOT/'runs'))
+        from .outbox import Outbox
+        self.request('notifications','PUT',Outbox(ROOT/'runs/outbox.sqlite3').summary())
         from .registry import Registry
         registry=Registry(ROOT/'runs/registry.sqlite3'); registry.import_runs(ROOT/'runs')
         self.request('registry','PUT',registry.export())
@@ -142,11 +144,27 @@ def run_cloud(resume=None,monitor=False,scheduled=False):
     if scheduled: cloud.request('monitor-status','PUT',{'status':result['status'],'run_id':result['run_id']})
     return folder,result
 
+def retry_notifications():
+    if os.getenv('GITHUB_ACTIONS')!='true':raise ValueError('Retry through the serialized GitHub workflow')
+    from .questions import Questions,send_question
+    from .outbox import Outbox
+    import tomllib
+    cloud=Cloud();unpack(cloud.request('state'))
+    config=tomllib.loads(cloud.request('settings')['config.toml'])
+    if not config.get('notifications',{}).get('telegram'):return
+    outbox=Outbox(ROOT/'runs/outbox.sqlite3');outbox.drain(before_send=cloud.sync)
+    questions=Questions(ROOT/'runs/questions.sqlite3')
+    for question in questions.pending():
+        try:send_question(questions,question,on_checkpoint=cloud.sync)
+        except ValueError:pass
+    cloud.sync()
+
 def main():
     import argparse
-    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','scheduled','settings']); parser.add_argument('--run-id')
+    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','scheduled','notifications','settings']); parser.add_argument('--run-id')
     args=parser.parse_args()
-    if args.command=='bootstrap': bootstrap(); print('Private cloud state initialized')
+    if args.command=='notifications': retry_notifications(); print('Notification recovery attempted; no research rerun')
+    elif args.command=='bootstrap': bootstrap(); print('Private cloud state initialized')
     elif args.command=='settings':
         from .settings import render_prompt
         settings,base=load_settings(); render_prompt(settings,base)

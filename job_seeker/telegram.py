@@ -2,7 +2,13 @@
 import os
 import httpx
 
-def notify(result):
+class DeliveryRejected(ValueError):
+    pass
+
+class DeliveryUncertain(ValueError):
+    pass
+
+def notify(result,on_checkpoint=None):
     token=os.getenv("TELEGRAM_BOT_TOKEN","")
     chat=os.getenv("TELEGRAM_CHAT_ID","")
     if not token or not chat or not chat.lstrip("-").isdigit():
@@ -15,7 +21,13 @@ def notify(result):
           f"Run: {result['run_id']}\nOpen your dashboard to review. No applications sent.")
     if result.get("scheduled"):
         text+="\nNew/changed opportunities:\n"+"\n".join((f.get("company","")+" — "+f.get("title","")+" ("+f.get("opportunity_change","")+")")[:250] for f in findings[:5])
-    send(text)
+    from .outbox import Outbox
+    from .settings import ROOT
+    outbox=Outbox(ROOT/"runs/outbox.sqlite3")
+    import hashlib
+    ident="completion:"+result["run_id"]+":"+hashlib.sha256(text.encode()).hexdigest()[:16]
+    outbox.enqueue(ident,text)
+    return outbox.deliver(ident,before_send=on_checkpoint)
 
 def send(text,force_reply=False):
     token=os.getenv("TELEGRAM_BOT_TOKEN","")
@@ -24,7 +36,11 @@ def send(text,force_reply=False):
     try:
         with httpx.Client(timeout=20,trust_env=False) as client:
             response=client.post(f"https://api.telegram.org/bot{token}/sendMessage",json={"chat_id":chat,"text":text,**({"reply_markup":{"force_reply":True,"input_field_placeholder":"Type your answer"}} if force_reply else {})})
-        if response.status_code!=200 or not response.json().get("ok"): raise ValueError("Telegram delivery failed")
+        if response.status_code!=200 or not response.json().get("ok"): raise DeliveryRejected("Telegram delivery failed")
         return response.json()["result"]["message_id"]
+    except httpx.HTTPError:
+        raise DeliveryUncertain("Telegram outcome uncertain; check delivery before retrying") from None
+    except DeliveryRejected:
+        raise
     except Exception:
-        raise ValueError("Telegram delivery failed; check bot and owner chat configuration") from None
+        raise DeliveryUncertain("Telegram outcome uncertain") from None

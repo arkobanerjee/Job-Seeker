@@ -136,6 +136,25 @@ class ProductTests(unittest.TestCase):
                 self.assertEqual(result['findings'][0]['url'],URL)
                 self.assertEqual(len(Registry(root/'runs/registry.sqlite3').export()['signals']),1)
 
+    def test_independent_review_rejects_with_source_blocker_and_separate_context(self):
+        import re
+        from job_seeker.reviewer import Review
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);setup(root);config=root/'config.toml'
+            config.write_text(re.sub(r'(\[review\][\s\S]*?enabled\s*=\s*)false',r'\1true',config.read_text()))
+            calls=[]
+            def search(source,query):source.allowed.add(URL);source.cache[query]=[{'url':URL}];return source.cache[query]
+            def fetch(source,url):
+                source.fetches+=1;source.records[url]={'url':url,'source_id':'known','http_status':200,'text':QUOTE+' German C1 is mandatory for this position.','observed_at':'today','links':[]};return source.records[url]
+            def model(settings,prompt,ledger,state,**kwargs):
+                calls.append(prompt)
+                if kwargs.get('schema') is Review:return Review(verdict='reject',reason='German requirement conflicts with basic German',blocker_quotes=['German C1 is mandatory for this position.'])
+                return Assessment(findings=[finding(source_id='known')])
+            with patch('job_seeker.runner.ROOT',root),patch.dict('os.environ',{'OPENAI_API_KEY':'fake','TAVILY_API_KEY':'fake'}),patch.object(SourceTools,'search',search),patch.object(SourceTools,'fetch',fetch),patch('job_seeker.runner.invoke_model',side_effect=model):
+                _,result=run(config);self.assertEqual(result['status'],'completed')
+                self.assertEqual(result['findings'][0]['kind'],'excluded');self.assertEqual(len(calls),2)
+                self.assertTrue(calls[1].startswith('Review the proposed job match independently'))
+
     def test_worker_lock(self):
         with tempfile.TemporaryDirectory() as tmp:
             with single_worker(Path(tmp)):

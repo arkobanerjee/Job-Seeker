@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/public-company-signals'
+BRANCH='codex/review-and-notification-recovery'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -34,9 +34,9 @@ def main():
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds bounded public company, hiring-announcement, technology, product and organizational-change research. Configured signal queries rotate through slots within the existing search allowance, preserving vacancy discovery. Signals require a matching retrieved source ID, verbatim quote and company text; unsupported event dates remain unknown.\n\nCompany signals are persisted separately from vacancies and displayed in the registry and reports. The assessor can follow observed careers links to find actual roles within the same budget/page limits.\n\nValidation: 49 Python tests and 11 Node tests pass, including invented evidence rejection, date handling, query rotation, persistent leads and the full signal-to-careers-to-vacancy chain. Dashboard syntax checked. No paid search or model calls performed; live acceptance remains pending.\n\nSignals are leads, not hiring predictions. Independent corroboration, hiring-momentum analysis and competitor expansion remain unfinished; this PR does not complete the broader product.')
+        body=('Adds two single-worker completion features: independent shortlist review and durable Telegram delivery recovery. Review uses a separate model context within shared budget/call limits; rejections require matching blocker quotes, and failed or capped reviews remain visibly unreviewed.\n\nNotifications and questions now persist outbox attempts before delivery, save receipts and retry confirmed failures with bounded backoff. Uncertain outcomes are never automatically resent. Dashboard recovery and weekday recovery runs execute separately from research. Private outbox state is included in cloud snapshots; delivery metadata is authenticated.\n\nValidation: 56 Python tests and 12 Node tests pass, covering reviewer integration, unsupported rejection, restart deduplication, backoff, uncertain outcomes, pre-send checkpoints and notification-only workflow dispatch. Dashboard syntax checked. No paid calls or production deployment performed. Live acceptance remains pending after merge; the overall product is still incomplete.')
         pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Discover company leads from evidence-backed public signals','body':body})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Review shortlisted jobs and recover failed Telegram delivery','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

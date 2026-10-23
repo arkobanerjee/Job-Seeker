@@ -212,3 +212,21 @@ Signals are retained separately in the company registry and reports, not promote
 to vacancies. The assessor may follow supplied careers/vacancy links within the same
 page and spending caps. No hiring probabilities are inferred. Signals do not yet
 provide hiring-momentum trends, independent corroboration or competitor expansion.
+
+## Independent review and notification recovery
+
+Enable review.enabled to review shortlisted vacancies in a separate model context.
+review.max_jobs bounds reviews, sharing the normal model-call and spending ceilings.
+A rejection needs a verbatim blocker quote from the retrieved source. Unsupported
+rejections become manual review; failed/capped review stays visibly incomplete.
+Excluded jobs cannot be upgraded by review. This checks interpretations, not legal
+eligibility or independent confirmation of job availability.
+
+Telegram deliveries use a private durable outbox. Saved receipts suppress duplicate
+sends; confirmed rejections retry with exponential backoff up to five attempts.
+Uncertain network outcomes and interrupted sends stay uncertain and are not retried
+blindly. Check Telegram before deciding how to resolve those records. Question receipts
+can recover without repeating research. Retry failed notifications in the dashboard
+queues a separate serialized workflow with no search or model calls; weekday scheduled
+workflows also attempt eligible recovery before monitoring. Delivery metadata stays
+authenticated and message content stays inside the private state archive.
