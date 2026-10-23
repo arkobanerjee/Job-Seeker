@@ -72,6 +72,10 @@ class ReviewSettings(Strict):
     enabled: bool = False
     max_jobs: int = Field(default=3,ge=1,le=10)
 
+class Competitors(Strict):
+    enabled: bool = False
+    max_queries: int = Field(default=1,ge=1,le=2)
+
 class Settings(Strict):
     model: ModelSettings = Field(default_factory=ModelSettings)
     limits: Limits = Field(default_factory=Limits)
@@ -81,6 +85,7 @@ class Settings(Strict):
     monitoring: Monitoring = Field(default_factory=Monitoring)
     signals: Signals = Field(default_factory=Signals)
     review: ReviewSettings = Field(default_factory=ReviewSettings)
+    competitors: Competitors = Field(default_factory=Competitors)
 
 def load_settings(path=None):
     path=Path(path or ROOT/"config.toml").resolve()

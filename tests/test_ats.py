@@ -42,3 +42,8 @@ class ATSTests(unittest.TestCase):
             tools=SourceTools(Ledger(Path(tmp)/'b.sqlite3','one'),lambda:None);tools.allowed.add(url)
             with patch('job_seeker.sources.public_get',return_value=('https://api.lever.co/robots.txt',200,'User-agent: *\nDisallow: /')) as get:
                 self.assertIn('error',tools.fetch(url));self.assertEqual(get.call_count,1)
+
+    def test_board_counts_keep_total_separate_from_link_sample(self):
+        info=endpoint('https://job-boards.greenhouse.io/acme')
+        data={'jobs':[{'title':'AI Engineer','absolute_url':'https://job-boards.greenhouse.io/acme/jobs/'+str(i)} for i in range(40)],'meta':{'total':40}}
+        record=parse(info,json.dumps(data));self.assertEqual(record['reported_total'],40);self.assertEqual(record['returned_count'],40);self.assertEqual(len(record['links']),30)

@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/review-and-notification-recovery'
+BRANCH='codex/momentum-and-competitors'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -34,9 +34,9 @@ def main():
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds two single-worker completion features: independent shortlist review and durable Telegram delivery recovery. Review uses a separate model context within shared budget/call limits; rejections require matching blocker quotes, and failed or capped reviews remain visibly unreviewed.\n\nNotifications and questions now persist outbox attempts before delivery, save receipts and retry confirmed failures with bounded backoff. Uncertain outcomes are never automatically resent. Dashboard recovery and weekday recovery runs execute separately from research. Private outbox state is included in cloud snapshots; delivery metadata is authenticated.\n\nValidation: 56 Python tests and 12 Node tests pass, covering reviewer integration, unsupported rejection, restart deduplication, backoff, uncertain outcomes, pre-send checkpoints and notification-only workflow dispatch. Dashboard syntax checked. No paid calls or production deployment performed. Live acceptance remains pending after merge; the overall product is still incomplete.')
+        body=('Adds two planned capabilities: observed ATS board activity and bounded competitor-chain discovery. Board counts retain provider totals separately from returned samples, and summaries require observations on different dates. Structured postings expose documented parent boards for subsequent bounded collection. No hiring probability or closure is inferred from count changes.\n\nCompetitor leads require a known seed and both names in a matching source quote. Generated follow-up searches reserve existing query slots and stay within the same run/page/spending limits. Leads remain unqualified until independently researched; monitoring never launches competitor searches. Dashboard displays both evidence types.\n\nValidation: 63 Python tests and 12 Node tests pass, including total-vs-sample counts, insufficient history, known-seed evidence, sanitized queries, end-to-end bounded expansion and unchanged monitoring cache behavior. No paid search or model calls made. Live acceptance and genuine multi-date observations remain pending after merge.')
         pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Review shortlisted jobs and recover failed Telegram delivery','body':body})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Track observed board activity and discover bounded competitor leads','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

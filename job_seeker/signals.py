@@ -30,8 +30,8 @@ def validate_signals(signals,page,run_id):
             'classification':'Company signal; no matching vacancy established','verification':'Quote and company text checked; signal interpretation and source ownership require review'})
     return good,bad
 
-def query_plan(settings,offset=0):
-    limit=settings.limits.max_searches
+def query_plan(settings,offset=0,reserved=0):
+    limit=max(1,settings.limits.max_searches-reserved)
     signals=settings.signals
     count=min(signals.max_queries,len(signals.queries),max(0,limit-1)) if signals.enabled else 0
     plan=[q.model_dump()|{'route':'vacancy'} for q in settings.search.queries[:limit-count]]

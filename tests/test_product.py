@@ -155,6 +155,29 @@ class ProductTests(unittest.TestCase):
                 self.assertEqual(result['findings'][0]['kind'],'excluded');self.assertEqual(len(calls),2)
                 self.assertTrue(calls[1].startswith('Review the proposed job match independently'))
 
+    def test_competitor_expansion_uses_reserved_slot_and_qualifies_independently(self):
+        import re
+        from job_seeker.competitors import CompetitorLead
+        from job_seeker.registry import Registry
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);setup(root);config=root/'config.toml';text=config.read_text()
+            text=re.sub(r'(\[competitors\][\s\S]*?enabled\s*=\s*)false',r'\1true',text).replace('max_searches = 6','max_searches = 2');config.write_text(text)
+            blog='https://example.org/compare';quote='Example Company and Rival Company are alternative platforms for RAG.'
+            Registry(root/'runs/registry.sqlite3').ingest('old',[{'company':'Example Company','url':blog}],{})
+            searches=[];calls=[]
+            def search(source,query):
+                searches.append(query);source.searches+=1;url=URL if 'Rival Company' in query else blog
+                source.allowed.add(url);source.cache[query]=[{'url':url}];return source.cache[query]
+            def fetch(source,url):
+                source.fetches+=1;record={'url':url,'source_id':'blog' if url==blog else 'job','text':quote if url==blog else QUOTE,'http_status':200,'observed_at':'today','links':[]};source.records[url]=record;return record
+            def model(*args):
+                calls.append(1)
+                if len(calls)==1:return Assessment(competitors=[CompetitorLead(seed_company='Example Company',company='Rival Company',source_id='blog',evidence_quote=quote)])
+                return Assessment(findings=[finding(source_id='job')])
+            with patch('job_seeker.runner.ROOT',root),patch.dict('os.environ',{'OPENAI_API_KEY':'fake','TAVILY_API_KEY':'fake'}),patch.object(SourceTools,'search',search),patch.object(SourceTools,'fetch',fetch),patch('job_seeker.runner.invoke_model',side_effect=model):
+                _,result=run(config);self.assertEqual(result['status'],'completed');self.assertEqual(len(searches),2)
+                self.assertEqual(len(result['competitor_leads']),1);self.assertEqual(len(result['findings']),1)
+
     def test_worker_lock(self):
         with tempfile.TemporaryDirectory() as tmp:
             with single_worker(Path(tmp)):

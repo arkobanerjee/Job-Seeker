@@ -18,6 +18,8 @@ class Registry:
         path.parent.mkdir(parents=True,exist_ok=True);self.path=path
         with closing(sqlite3.connect(path)) as db,db:
             db.executescript("""
+            CREATE TABLE IF NOT EXISTS board_counts(url TEXT,run_id TEXT,payload TEXT,PRIMARY KEY(url,run_id));
+            CREATE TABLE IF NOT EXISTS competitor_leads(id TEXT PRIMARY KEY,payload TEXT);
             CREATE TABLE IF NOT EXISTS signal_cursor(id INTEGER PRIMARY KEY,value INTEGER);
             CREATE TABLE IF NOT EXISTS signals(id TEXT PRIMARY KEY,payload TEXT);
             CREATE TABLE IF NOT EXISTS assessments(url TEXT, content_hash TEXT, context_hash TEXT, payload TEXT, PRIMARY KEY(url,content_hash,context_hash));
@@ -31,6 +33,9 @@ class Registry:
             for raw,record in records.items():
                 try: info=source_info(raw)
                 except ValueError: continue
+                if record.get('structured_index') and isinstance(record.get('returned_count'),int):
+                    metrics={k:record.get(k) for k in ('observed_at','ats_provider','ats_tenant','returned_count','reported_total')}
+                    db.execute('INSERT OR IGNORE INTO board_counts VALUES(?,?,?)',(info['url'],run_id,json.dumps(metrics)))
                 url=info['url'];db.execute("INSERT OR IGNORE INTO sources VALUES(?,?,?)",(url,info['host'],info['ats']))
                 ok=record.get('http_status')==200
                 status='closed_marker' if ok and record.get('closed_marker') else 'retrieved' if ok else 'unavailable'
@@ -45,6 +50,15 @@ class Registry:
                 db.execute("INSERT OR IGNORE INTO companies VALUES(?,?)",(ident,name))
                 db.execute("INSERT OR IGNORE INTO sources VALUES(?,?,?)",(info['url'],info['host'],info['ats']))
                 db.execute("INSERT OR IGNORE INTO company_sources VALUES(?,?,?)",(ident,info['url'],run_id))
+    def ingest_competitors(self,leads):
+        with closing(sqlite3.connect(self.path)) as db,db:
+            for lead in leads:
+                ident=hashlib.sha256(json.dumps([lead[k] for k in ('seed_company','company','url')]).encode()).hexdigest()[:24]
+                db.execute('INSERT OR REPLACE INTO competitor_leads VALUES(?,?)',(ident,json.dumps(lead)))
+    def momentum(self):
+        from .momentum import summarize
+        with closing(sqlite3.connect(self.path)) as db:
+            return [{'url':url,**summarize([json.loads(p) for p, in db.execute('SELECT payload FROM board_counts WHERE url=?',(url,))])} for url, in db.execute('SELECT DISTINCT url FROM board_counts')]
     def signal_offset(self,advance=0):
         with closing(sqlite3.connect(self.path)) as db,db:
             db.execute("INSERT OR IGNORE INTO signal_cursor VALUES(1,0)")
@@ -70,7 +84,7 @@ class Registry:
                         item['change']='first_observation' if previous is None else 'unchanged' if previous==item['content_hash'] else 'text_changed'
                         previous=item['content_hash']
                 sources.append({'url':url,'host':host,'ats':ats,'official_status':'unverified','history':history[-20:]})
-            return {'companies':companies,'sources':sources,'signals':[dict(json.loads(p),id=i) for i,p in db.execute('SELECT id,payload FROM signals')]}
+            return {'companies':companies,'sources':sources,'momentum':self.momentum(),'competitors':[dict(json.loads(p),id=i) for i,p in db.execute('SELECT id,payload FROM competitor_leads')],'signals':[dict(json.loads(p),id=i) for i,p in db.execute('SELECT id,payload FROM signals')]}
     def monitor_targets(self,limit):
         with closing(sqlite3.connect(self.path)) as db:
             return [r[0] for r in db.execute("SELECT s.url FROM sources s LEFT JOIN source_observations o ON s.url=o.url GROUP BY s.url ORDER BY MAX(o.observed_at) ASC,s.url LIMIT ?",(limit,))]
@@ -88,3 +102,4 @@ class Registry:
             state=json.loads(checkpoint.read_text(encoding='utf-8'))
             self.ingest(checkpoint.parent.name,state.get('findings',[]),state.get('sources',{}))
             self.ingest_signals(state.get('signals',[]))
+            self.ingest_competitors(state.get('competitor_leads',[]))
