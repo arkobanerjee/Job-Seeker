@@ -21,8 +21,9 @@ the candidate to choose “apply anyway”. Do not submit applications.
 Distinguish mandatory requirements from preferences. Missing information is unknown,
 not a rejection. An English advertisement does not establish English-only work.
 Populate each finding's mandatory_conflicts independently of its technical fit.
-Required German communication or German-language workshops conflict with very basic
-German even when the posting gives no CEFR level. A technically strong role can
+Compare mandatory German requirements with the candidate language evidence below.
+B1 does not establish professional fluency. Where candidate descriptions disagree
+or an employer gives no clear required level, retain the uncertainty for manual review. A technically strong role can
 therefore still belong in the rejected/manual-review queue.
 Remote does not mean worldwide. Do not make legal work-authorization determinations.
 Prefer explicit employer statements about sponsorship or relocation.

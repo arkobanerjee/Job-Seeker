@@ -6,15 +6,15 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/board-observations-and-route-acceptance'
+BRANCH='codex/company-opportunities-and-activity'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
     if not token: raise ValueError('GITHUB_DEPLOY_TOKEN missing')
     files=[]
-    for directory in ('job_seeker','tests','cloud','scripts','.github','prompts'):
+    for directory in ('job_seeker','tests','cloud','scripts','.github','prompts','experiments'):
         files.extend(p for p in (ROOT/directory).rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix in ('.py','.js','.toml','.json','.yml','.md'))
-    files.extend(ROOT/p for p in ('.gitignore','.env.example','README.md','DEPLOYMENT.md','config.toml','profile.example.md','pyproject.toml','requirements.lock'))
+    files.extend(ROOT/p for p in ('.gitignore','.env.example','README.md','USER_GUIDE.md','comparison-plan.md','DEPLOYMENT.md','config.toml','profile.example.md','pyproject.toml','requirements.lock'))
     entries=[{'path':p.relative_to(ROOT).as_posix(),'mode':'100644','type':'blob','content':p.read_text(encoding='utf-8')} for p in files]
     secret_values=[v for k,v in values.items() if v and len(v)>12 and any(s in k for s in ('TOKEN','KEY'))]
     if any(v in e['content'] for e in entries for v in secret_values): raise ValueError('A credential was detected in publication files')
@@ -30,13 +30,13 @@ def main():
         parent=head.json()['object']['sha'] if exists else api('GET','/git/ref/heads/main')['object']['sha']
         tree_base=api('GET','/git/commits/'+parent)['tree']['sha']
         tree=api('POST','/git/trees',{'base_tree':tree_base,'tree':entries})
-        commit=api('POST','/git/commits',{'message':'Collect bounded ATS observations and validate optional routes','tree':tree['sha'],'parents':[parent]})
+        commit=api('POST','/git/commits',{'message':'Add company opportunities and readable research activity','tree':tree['sha'],'parents':[parent]})
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds a separate bounded public ATS board-count path with no model, paid-search or budget-reservation calls. It derives supported boards from known ATS URLs and validated optional seeds, collapses duplicates, rotates oldest sources and caps reads. Weekday collection respects schedule settings and can continue when paid research hits its gate. It uses the serialized workflow, state health/version checks and a private pre-write backup. Dashboard control and history distinguish observations from job-fit research. Unavailable boards never become zero counts.\n\nBoard comparisons now require actual distinct UTC dates and comparable provider, tenant, API and sample provenance. A changed collection policy starts a new baseline rather than inventing growth. Missing provenance and invalid counts fail closed. A real read produced one private first-day baseline; a second board was unavailable. Live multi-date acceptance awaits real elapsed time.\n\nAdds an explicit two-call private route acceptance helper with a $0.04 envelope in the unchanged $5 gate. Focused real-source competitor and same-claim corroboration probes passed quote checks. Publisher independence remained unverified; issuer/investor announcements are not independent reporting. Optional discovery flags were not enabled by this test. The selected positive probes are not broad route-accuracy evidence. Raw captures and results remain private.\n\nValidation: 100 Python tests, 18 Node tests, five recovery drills and dashboard syntax checks pass. Coverage includes scope changes, UTC dates, unavailable vs zero counts, disabled-observer guards, conditional snapshot writes without reservations, quote checks and distinct workflow dispatch. No multi-worker benchmark, allowance increase or fabricated historical observations.')
-        pr=prs[0] if prs else api('POST','/pulls',{'title':'Add model-free board observations and optional-route acceptance','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Add model-free board observations and optional-route acceptance','body':body})
+        body='Adds a separate Company opportunities queue for sourced company signals, positive comparable board changes and competitor leads. Cards show evidence, uncertainty, suggested next steps and persistent watch/investigate/dismiss/draft decisions. An editable introduction template never sends messages. Company decisions live outside research snapshots and job decisions. No discovery flags or spending limits are enabled or raised.\n\nRun history now exposes recorded exact queries, result URLs and page outcomes, with limitations grouped separately. Historical missing details remain explicit. Adds an operating guide and records the single-worker operating choice. Includes the separate local comparison harness and offline tests; private experimental results and candidate background are excluded.\n\nValidation: 110 Python tests previously passed; 21 Node tests and dashboard syntax pass. New tests cover stable opportunity identity, momentum gating and separate decision storage. No paid calls or production data writes were needed for this feature.'
+        pr=prs[0] if prs else api('POST','/pulls',{'title':'Add company opportunities and readable research activity','head':BRANCH,'base':'main','body':body,'draft':True})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Add company opportunities and readable research activity','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

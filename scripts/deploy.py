@@ -41,7 +41,7 @@ def deploy_worker(values,github_dispatch=False):
             if values.get(name): bindings.append({'type':'secret_text','name':name,'text':values[name]})
         metadata={'main_module':'worker.js','compatibility_date':'2026-10-23','bindings':bindings}
         parts={'metadata':(None,json.dumps(metadata),'application/json')}
-        for name in ('worker.js','page.js','questions.js','controls.js','backups.js','archives.js'):
+        for name in ('worker.js','page.js','questions.js','controls.js','backups.js','archives.js','opportunities.js'):
             parts[name]=(name,(ROOT/'cloud'/name).read_text(encoding='utf-8'),'application/javascript+module')
         call(client,'PUT',base+'/workers/scripts/job-seeker',files=parts)
         call(client,'POST',base+'/workers/scripts/job-seeker/subdomain',json={'enabled':True})

@@ -16,4 +16,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test cloud/worker.test.js
+      - run: node --test cloud/worker.test.js cloud/opportunities.test.js

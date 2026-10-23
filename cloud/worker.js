@@ -1,3 +1,4 @@
+import {opportunityApi} from './opportunities.js';
 // One-owner control plane. All data endpoints require a high-entropy bearer secret.
 import { page } from './page.js';
 import {backupApi} from './backups.js';
@@ -15,6 +16,7 @@ export default {
     if(!env.APP_TOKEN || request.headers.get('Authorization')!==`Bearer ${env.APP_TOKEN}`) return reply({error:'Unauthorized'},401);
     if(request.headers.get('Origin') && request.headers.get('Origin')!==u.origin) return reply({error:'Invalid origin'},403);
     try {
+      const companyResponse=await opportunityApi(request,env,u.pathname);if(companyResponse)return companyResponse;
       const backupResponse=await backupApi(request,env,u.pathname);if(backupResponse)return backupResponse;
       const archiveResponse=await archivesApi(request,env,u.pathname);if(archiveResponse)return archiveResponse;
       const questionResponse=await questionApi(request,env,u.pathname);
