@@ -128,3 +128,17 @@ Deployment requires TELEGRAM_WEBHOOK_SECRET and TELEGRAM_CHAT_ID Worker secrets,
 a Telegram setWebhook registration pointing to /telegram with that secret_token,
 and notifications.telegram=true in cloud settings. These are not enabled by this PR.
 Dashboard question controls and automatic delivery retry are still pending.
+
+## Company and source registry
+
+Both dashboards expose Companies and source history. The private registry retains
+company/source associations, ATS host detection, retrieval timestamps and content
+hashes across runs. Source observations are idempotent per run; inaccessible pages
+remain unavailable rather than closed. Changes describe retrieved text, not job counts
+or hiring predictions. Identity currently uses normalized company names, so aliases
+need later reconciliation. Official source ownership remains unverified.
+
+The registry is populated from saved checkpoints and future research. It does not yet
+automatically schedule source checks, collect structured ATS feeds, or discover official
+career landing pages. Those are the next monitoring milestone. The SQLite registry
+travels in the private cloud snapshot and its dashboard export is authenticated.

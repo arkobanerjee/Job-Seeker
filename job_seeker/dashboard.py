@@ -7,6 +7,7 @@ import secrets
 import threading
 from .settings import ROOT
 from .catalog import Catalog
+from .registry import Registry
 
 STYLE="""body{font:16px system-ui;background:#101820;color:#e8edf2;max-width:1100px;margin:40px auto;padding:0 24px}
 a{color:#7cd6c4}h1{font-size:36px}nav{display:flex;gap:20px;margin:24px 0}article{background:#1b2935;padding:24px;margin:18px 0;border-radius:12px}
@@ -16,6 +17,7 @@ textarea{width:90%;margin:10px 0}label{margin-right:15px}.tag{background:#324955
 def serve(port=8765):
     catalog=Catalog(ROOT/"runs"/"catalog.sqlite3")
     catalog.import_runs(ROOT/"runs")
+    registry=Registry(ROOT/"runs/registry.sqlite3"); registry.import_runs(ROOT/"runs")
     csrf=secrets.token_urlsafe(32)
     origin=f"http://127.0.0.1:{port}"
     lock=threading.Lock(); running={"active":False,"status":"No run started from this dashboard"}
@@ -38,6 +40,16 @@ def serve(port=8765):
             content+=''.join(f'<a href="/?category={k}">{label}</a> &nbsp; ' for k,label in [("all","All"),("vacancy","Shortlist"),("excluded","Rejected / apply anyway"),("watchlist","Companies")])
             content+=f'<form method=get><input name=q placeholder="Search company, role, reason" value="{escape(query,quote=True)}"><button>Search</button></form>'
             content+=f'<form method=post action=/run><input type=hidden name=csrf value="{csrf}"><button>Start a bounded search</button></form><p class=meta>{escape(running["status"])}</p><p><small>Edit config.toml and prompts/master.md to tune searches. Resume and profile stay in private/.</small></p>'
+            memory=registry.export()
+            content+='<details><summary>Companies and source history</summary><p>Discovered sources; employer identity and official ownership are unverified. Text changes do not prove hiring growth or closure.</p>'
+            for company in memory['companies']:
+                content+='<h3>'+escape(company['name'])+'</h3>'
+                for url in company['sources']: content+='<p>'+escape(url)+'</p>'
+            for source in memory['sources']:
+                content+='<h3>'+escape(source['host'])+'</h3><p>'+escape(source['url'])+' · '+escape(source['ats'] or 'ATS unknown')+'</p>'
+                for observation in source['history']:
+                    content+='<p>'+escape(' · '.join([observation['observed_at'] or 'Time unknown',observation['status'],observation['change']]))+'</p>'
+            content+='</details>'
             for f in rows:
                 if category!="all" and f.get("kind")!=category: continue
                 if query and query not in json.dumps(f,ensure_ascii=False).casefold(): continue

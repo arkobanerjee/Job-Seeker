@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/telegram-single-question'
+BRANCH='codex/company-source-registry'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -34,9 +34,9 @@ def main():
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Standalone Telegram answers now resolve to the question when exactly one unanswered question exists. Explicit replies and question-ID commands remain supported; ambiguous messages cannot select among multiple pending questions. Deployment also preserves existing webhook secrets.\n\nValidation: six Node tests pass, including owner checks, standalone replies and ambiguity rejection. This repairs Telegram clients that send plain text without a reply reference.')
+        body=('Adds persistent company/source memory and a history view in both dashboards. Research checkpoints populate employer associations, ATS detection, retrieval status and content hashes. Shared ATS hosts do not merge different company names; official ownership and name-based identity remain explicitly unverified. Failed retrieval is distinct from closure.\n\nCloud snapshots include the private registry and expose its export through an authenticated endpoint. Historical checkpoints can populate the registry without paid searches. Recurring checks, structured ATS collectors and alias reconciliation remain future work.\n\nValidation: 30 Python tests and 7 Node tests pass, covering idempotent observations, shared ATS identity, text changes, unavailable pages and private registry access. No paid searches or production deployment performed for this change.')
         pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Accept plain Telegram answers to a single pending question','body':body})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Remember companies and career sources across research runs','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':
