@@ -54,4 +54,4 @@ def parse(info,body):
     parser=PageText();parser.feed(content)
     text=' '.join(('Title: '+str(title)+' Location: '+str(location)+' '+' '.join(parser.parts)).split())[:18000]
     board_url=('https://job-boards.greenhouse.io/'+tenant) if provider=='greenhouse' else ('https://jobs.eu.lever.co/' if 'api.eu.lever.co' in api else 'https://jobs.lever.co/')+tenant
-    return {'text':text,'links':[],'board_url':board_url,'structured_index':False,'ats_provider':provider,'ats_tenant':tenant,'ats_job_id':job_id,'api_url':api}
+    return {'text':text,'posting_title':str(title),'links':[],'board_url':board_url,'structured_index':False,'ats_provider':provider,'ats_tenant':tenant,'ats_job_id':job_id,'api_url':api}

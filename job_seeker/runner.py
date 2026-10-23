@@ -29,6 +29,11 @@ No contact hunting, applications, messages, or external changes. Do not invent f
 Return structured output only. Keep missing facts unknown. Quote the supplied page
 verbatim. For an individual vacancy copy its exact title and source_id. Preserve
 technically relevant rejected roles with rejection reasons. Never infer visa rights.
+Populate language_status and eligibility_status as stated or unknown. For unknown
+facts use the literal unknown in the corresponding text field; do not guess rights.
+Closed postings belong in excluded with a closed-listing reason, never a shortlist.
+Announcements with no individual opening may be signals only; do not invent a vacancy
+or a company-watchlist finding merely to populate findings.
 """
 
 class Assessment(BaseModel):
@@ -289,7 +294,7 @@ def _run(config,resume,on_checkpoint=None,control=None):
                 f["discovery_method"]="saved_source_monitor" if settings.monitoring.enabled else "web_search"
                 f["assessment_reused"]=bool(cached)
                 f["discovery_trails"]=discovery_trails(f["url"],sources.cache,sources.records,state["run_id"])
-                f.update(company_details=assessment.company_details,rejection_reasons=assessment.rejection_reasons if f["kind"]=="excluded" else [],rejection_evidence=evidence,
+                f.update(company_details=assessment.company_details,rejection_reasons=list(dict.fromkeys(f.get('rejection_reasons',[])+(assessment.rejection_reasons if f["kind"]=="excluded" else []))),rejection_evidence=list(dict.fromkeys(f.get('rejection_evidence',[])+evidence)),
                          review_status="rejected" if f["kind"]=="excluded" else "shortlisted" if f["kind"]=="vacancy" else "watchlist")
                 if f["kind"]=="excluded" and not f["rejection_reasons"]: f["rejection_reasons"]=f.get("mandatory_conflicts") or f["concerns"] or [f["fit_reason"]]
             if settings.review.enabled:

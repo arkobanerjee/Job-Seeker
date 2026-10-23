@@ -153,10 +153,11 @@ class SourceTools:
                 if link not in links and len(links)<30: links.append(link)
             if structured:
                 text=structured["text"];links=structured["links"]
-            closed=any(x in text.lower() for x in ("this job is no longer available","this position has been filled","job not found","this job has expired","the vacancy is closed","expired job"))
+            closed_quote=next((text[text.lower().index(x):text.lower().index(x)+len(x)] for x in ("this job is no longer available","this position has been filled","job not found","this job has expired","the vacancy is closed","expired job","this position is closed","this role is no longer available","no longer accepting applications","applications for this position are closed") if x in text.lower()),None)
+            closed=closed_quote is not None
             record={"url":url,"final_url":final,"http_status":status,"text":text,
                     "source_id":hashlib.sha256(url.encode()).hexdigest()[:16],
-                    "observed_at":datetime.now(timezone.utc).isoformat(),"closed_marker":closed,"links":links}
+                    "observed_at":datetime.now(timezone.utc).isoformat(),"closed_marker":closed,"closed_marker_quote":closed_quote,"links":links}
             if structured: record.update(structured)
         except (ValueError,TypeError,AttributeError,OSError,http.client.HTTPException):
             record={"url":url,"observed_at":datetime.now(timezone.utc).isoformat(),"error":"Retrieval unavailable, blocked by policy, too large, or unsupported; no closure inference"}

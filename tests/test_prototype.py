@@ -42,7 +42,9 @@ class Tests(unittest.TestCase):
         good,bad=validate_findings(Report(findings=[finding(),finding(),finding(evidence_quote="A fabricated quote long enough to pass the minimum length")],limitations=[]),{URL:record})
         self.assertEqual(len(good),1); self.assertEqual(len(bad),1)
         record["closed_marker"]=True
-        self.assertFalse(validate_findings(Report(findings=[finding()],limitations=[]),{URL:record})[0])
+        closed,_=validate_findings(Report(findings=[finding()],limitations=[]),{URL:record})
+        self.assertEqual(closed[0]['kind'],'excluded');self.assertEqual(closed[0]['listing_status'],'closed')
+        self.assertTrue(closed[0]['rejection_reasons'])
         self.assertFalse(validate_findings(Report(findings=[finding()],limitations=[]),{})[0])
 
     def test_conflicting_fit_never_enters_vacancy_shortlist(self):

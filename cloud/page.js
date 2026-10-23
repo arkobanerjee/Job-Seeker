@@ -9,6 +9,7 @@ async function api(path,method='GET',body){const r=await fetch('/api/'+path,{met
 function text(tag,value,parent){const el=document.createElement(tag);el.textContent=value;parent.append(el);return el}
 function render(){byId('jobs').replaceChildren();const q=byId('search').value.toLowerCase(),cat=byId('category').value;for(const f of rows){if(cat!=='all'&&f.kind!==cat)continue;if(q&&!JSON.stringify(f).toLowerCase().includes(q))continue;
 const card=document.createElement('article');text('small',f.kind,card);text('h2',f.company+' â€” '+f.title,card);if(f.url.startsWith('https://')){const a=text('a','Open listing',card);a.href=f.url;a.target='_blank';a.rel='noopener noreferrer'}
+text('p','Listing: '+(f.listing_status||'not independently confirmed')+' · '+(f.availability||'Availability unknown'),card);
 text('p','Discovery: '+(f.discovery_method||'Earlier research')+' · assessment: '+(f.assessment_reused?'reused after source check':'assessed'),card);
 for(const [label,key] of [['Fit','fit_reason'],['Company','company_details'],['Location','location'],['Language','language'],['Eligibility','eligibility'],['Evidence','evidence_quote']])text('p',label+': '+(f[key]||'Unknown'),card);
 if(f.independent_review)text('p','Independent review: '+f.independent_review.verdict+' · '+f.independent_review.reason,card);else text('p',f.review_note||'Independent review not performed.',card);

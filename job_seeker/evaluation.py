@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from .research import Report,validate_findings
 from .runner import Assessment
+from .signals import validate_signals
 
 
 def score(cases,predictions):
@@ -19,13 +20,15 @@ def score(cases,predictions):
         assessment=Assessment.model_validate(item)
         findings=[] if assessment.source_type=='index' else assessment.findings
         good,bad=validate_findings(Report(findings=findings,limitations=[]),{case['source']['url']:case['source']})
+        signals,_=validate_signals(assessment.signals,case['source'],'evaluation')
         # One labelled target per case. Extra outputs count as a failure, not a lucky match.
-        category=good[0]['kind'] if len(good)==1 else 'unverified' if not good else 'multiple'
+        category=good[0]['kind'] if len(good)==1 else 'signal' if not good and signals else 'unverified' if not good else 'multiple'
         errors=[]
         if category!=expected['kind']:errors.append('category')
         if good and any(f['title'].casefold()!=case['title'].casefold() for f in good):errors.append('target_title')
         for field in expected.get('unknown_fields',[]):
             if good and any(f.get(field,'').strip().casefold()!='unknown' for f in good):errors.append('unsupported_'+field)
+            if expected.get('require_fact_status') and good and any(f.get(field+'_status')!='unknown' for f in good):errors.append('missing_'+field+'_status')
         if expected.get('requires_rejection_reason') and good:
             if not assessment.rejection_reasons and not any(f.get('mandatory_conflicts') for f in good):errors.append('missing_rejection_reason')
         predicted=any(f['kind']=='vacancy' for f in good)
@@ -35,7 +38,7 @@ def score(cases,predictions):
     return {'cases':len(cases),'submitted':sum(x in predictions for x in ids),
             'passed':sum(x['passed'] for x in rows),'shortlist_precision':tp/(tp+fp) if tp+fp else None,
             'shortlist_recall':tp/(tp+fn) if tp+fn else None,'false_shortlists':fp,'missed_shortlists':fn,
-            'results':rows,'scope':'Frozen examples only; not search coverage, legal eligibility or live job availability.'}
+            'contract_version':2,'results':rows,'scope':'Frozen examples only; not search coverage, legal eligibility or live job availability.'}
 
 
 def main():

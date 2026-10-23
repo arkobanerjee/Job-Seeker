@@ -21,6 +21,14 @@ def run(root,n,status='completed',date='2026-01-01T00:00:00+00:00'):
 
 
 class RetentionTests(unittest.TestCase):
+    def test_legacy_questions_schema_is_read_conservatively(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);ident=run(root,1)
+            with closing(sqlite3.connect(root/'runs/questions.sqlite3')) as db,db:
+                db.execute('CREATE TABLE questions(id TEXT,run_id TEXT,answer TEXT)')
+                db.execute('INSERT INTO questions VALUES(?,?,NULL)',('old-question',ident))
+            self.assertEqual(candidates(root,keep=0,days=1),[])
+
     def test_protects_recent_active_questions_and_uncertain_deliveries(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);now=datetime(2026,10,23,tzinfo=timezone.utc)
