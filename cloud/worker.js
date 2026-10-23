@@ -1,5 +1,6 @@
 // One-owner control plane. All data endpoints require a high-entropy bearer secret.
 import { page } from './page.js';
+import {readControl,setControl} from './controls.js';
 import { webhook,questionApi,resume } from './questions.js';
 const headers = {'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const reply = (body,status=200) => new Response(JSON.stringify(body),{status,headers});
@@ -102,11 +103,24 @@ export default {
       if(u.pathname==='/api/runs' && request.method==='GET') {
         const object=await env.STATE.get('runs/latest.json');return reply(object?await object.json():[]);
       }
+      if(u.pathname.startsWith('/api/control/') && request.method==='GET') {
+        const id=u.pathname.split('/').pop();if(!/^[a-f0-9]{32}$/.test(id))return reply({error:'Invalid run'},400);
+        return reply(await readControl(env,id));
+      }
+      if(u.pathname==='/api/control' && request.method==='POST') {
+        const {run_id,action}=await request.json();if(!/^[a-f0-9]{32}$/.test(run_id)||!['pause','cancel'].includes(action))return reply({error:'Invalid control'},400);
+        const object=await env.STATE.get('runs/latest.json'),rows=object?await object.json():[],run=rows.find(x=>x.run_id===run_id);
+        if(!run||!['running','waiting_user','paused','partial','failed'].includes(run.status))return reply({error:'Run is not controllable'},409);
+        const control=await setControl(env,run_id,action);if(control.error)return reply(control,409);
+        if(run.status!=='running' && !await resume(env,run_id))return reply({error:'Control saved; continuation dispatch failed'},502);
+        return reply({requested:action,at_boundary:true});
+      }
       if(u.pathname==='/api/resume' && request.method==='POST') {
         const {run_id}=await request.json();if(!/^[a-f0-9]{32}$/.test(run_id))return reply({error:'Invalid run'},400);
         const object=await env.STATE.get('runs/latest.json');const rows=object?await object.json():[];
         const run=rows.find(x=>x.run_id===run_id);
-        if(!run||!run.can_resume||!['partial','failed'].includes(run.status))return reply({error:'Run cannot be resumed'},409);
+        if(!run||!run.can_resume||!['partial','failed','paused'].includes(run.status))return reply({error:'Run cannot be resumed'},409);
+        const control=await setControl(env,run_id,'run');if(control.error)return reply(control,409);
         return await resume(env,run_id)?reply({queued:true}):reply({error:'Resume dispatch failed'},502);
       }
       const key=keyFor(u.pathname);

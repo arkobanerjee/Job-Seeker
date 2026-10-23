@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/momentum-and-competitors'
+BRANCH='codex/source-qualification-and-controls'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -34,9 +34,9 @@ def main():
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds two planned capabilities: observed ATS board activity and bounded competitor-chain discovery. Board counts retain provider totals separately from returned samples, and summaries require observations on different dates. Structured postings expose documented parent boards for subsequent bounded collection. No hiring probability or closure is inferred from count changes.\n\nCompetitor leads require a known seed and both names in a matching source quote. Generated follow-up searches reserve existing query slots and stay within the same run/page/spending limits. Leads remain unqualified until independently researched; monitoring never launches competitor searches. Dashboard displays both evidence types.\n\nValidation: 63 Python tests and 12 Node tests pass, including total-vs-sample counts, insufficient history, known-seed evidence, sanitized queries, end-to-end bounded expansion and unchanged monitoring cache behavior. No paid search or model calls made. Live acceptance and genuine multi-date observations remain pending after merge.')
+        body=('Adds two product capabilities: user-configured company/source qualification and cooperative pause/cancel controls. Company aliases reconcile registry identities; official-domain matches and observed links to exact postings or ATS tenants retain their evidence. Shared ATS domains and conflicting aliases are rejected. Missing evidence remains unverified.\n\nDashboard controls persist outside run snapshots and stop subsequent searches, fetches and model calls at tool boundaries. Paused runs can continue with their original envelope; cancellation is terminal and excludes pending questions/retries. In-flight calls may still finish and incur charges.\n\nValidation: 67 Python tests and 13 Node tests pass, covering alias migration, similar-host and cross-tenant rejection, authenticated controls, pause before paid work, terminal cancellation and existing regressions. Dashboard syntax checked. No paid search or model calls were made; live acceptance remains pending. Independent signal corroboration and release hardening remain unfinished.')
         pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Track observed board activity and discover bounded competitor leads','body':body})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Qualify company sources and add pause/cancel controls','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

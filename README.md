@@ -244,3 +244,23 @@ in a matching source quote. Leads remain explicitly unqualified until separately
 researched. Searches are generated from sanitized company names, capped across the
 whole run, and disabled during monitoring. Model relationship interpretations still
 need review; co-mentions alone are not intended as competitor evidence.
+
+## Company identity and source qualification
+
+Configure companies.profiles with a canonical name, aliases and user-approved official
+domains. Shared ATS domains cannot be registered as company domains. Aliases reconcile
+registry identities; future job observations use the canonical name without replacing
+human decisions. Dashboard source evidence distinguishes a configured domain match,
+an observed link from that domain to the exact posting/ATS tenant, and unverified
+relationships. A matching name or shared ATS host alone never establishes ownership.
+This does not yet independently corroborate public signal claims.
+
+## Pause and cancel
+
+Use Pause or Cancel in cloud run history. Requests persist outside the run archive
+and are checked before subsequent searches, page retrieval and model calls, and at
+completion. In-flight calls may finish and incur charges. Pause saves progress and
+can resume within the original budget; cancellation is terminal and cancels pending
+question delivery. Existing findings/evidence are retained. Cancelled questions cannot
+be answered in the dashboard. Controls do not forcibly terminate an in-flight HTTP
+request; they stop at cooperative boundaries.

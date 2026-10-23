@@ -18,6 +18,8 @@ class Registry:
         path.parent.mkdir(parents=True,exist_ok=True);self.path=path
         with closing(sqlite3.connect(path)) as db,db:
             db.executescript("""
+            CREATE TABLE IF NOT EXISTS company_profiles(id TEXT PRIMARY KEY,payload TEXT);
+            CREATE TABLE IF NOT EXISTS official_edges(origin TEXT,target TEXT,PRIMARY KEY(origin,target));
             CREATE TABLE IF NOT EXISTS board_counts(url TEXT,run_id TEXT,payload TEXT,PRIMARY KEY(url,run_id));
             CREATE TABLE IF NOT EXISTS competitor_leads(id TEXT PRIMARY KEY,payload TEXT);
             CREATE TABLE IF NOT EXISTS signal_cursor(id INTEGER PRIMARY KEY,value INTEGER);
@@ -28,9 +30,30 @@ class Registry:
             CREATE TABLE IF NOT EXISTS company_sources(company_id TEXT,url TEXT,run_id TEXT,PRIMARY KEY(company_id,url,run_id));
             CREATE TABLE IF NOT EXISTS source_observations(url TEXT,run_id TEXT,observed_at TEXT,status TEXT,content_hash TEXT,http_status INTEGER,PRIMARY KEY(url,run_id));
             """)
+    def configure_profiles(self,profiles):
+        with closing(sqlite3.connect(self.path)) as db,db:
+            db.execute('DELETE FROM company_profiles')
+            for profile in profiles:
+                data=profile.model_dump() if hasattr(profile,'model_dump') else profile
+                ident=hashlib.sha256(data['name'].casefold().encode()).hexdigest()[:24]
+                db.execute('INSERT INTO company_profiles VALUES(?,?)',(ident,json.dumps(data)))
+                db.execute('INSERT OR IGNORE INTO companies VALUES(?,?)',(ident,data['name']))
+                names={' '.join(n.split()).casefold() for n in [data['name'],*data['aliases']]}
+                for old_id,old_name in db.execute('SELECT id,name FROM companies').fetchall():
+                    if old_id!=ident and ' '.join(old_name.split()).casefold() in names:
+                        db.execute('INSERT OR IGNORE INTO company_sources SELECT ?,url,run_id FROM company_sources WHERE company_id=?',(ident,old_id))
+                        db.execute('DELETE FROM company_sources WHERE company_id=?',(old_id,));db.execute('DELETE FROM companies WHERE id=?',(old_id,))
+    def canonical_name(self,name):
+        with closing(sqlite3.connect(self.path)) as db:
+            for payload, in db.execute('SELECT payload FROM company_profiles'):
+                profile=json.loads(payload)
+                if ' '.join(name.split()).casefold() in {' '.join(n.split()).casefold() for n in [profile['name'],*profile['aliases']]}:return profile['name']
+        return name
     def ingest(self,run_id,findings,records):
         with closing(sqlite3.connect(self.path)) as db,db:
             for raw,record in records.items():
+                if record.get('http_status')==200:
+                    for link in record.get('links',[]):db.execute('INSERT OR IGNORE INTO official_edges VALUES(?,?)',(raw,link))
                 try: info=source_info(raw)
                 except ValueError: continue
                 if record.get('structured_index') and isinstance(record.get('returned_count'),int):
@@ -42,7 +65,7 @@ class Registry:
                 digest=hashlib.sha256(record.get('text','').encode()).hexdigest() if ok else None
                 db.execute("INSERT OR IGNORE INTO source_observations VALUES(?,?,?,?,?,?)",(url,run_id,record.get('observed_at'),status,digest,record.get('http_status')))
             for finding in findings:
-                name=' '.join(finding.get('company','').split())
+                name=self.canonical_name(' '.join(finding.get('company','').split()))
                 if not name or name.casefold() in ('unknown','n/a'): continue
                 try: info=source_info(finding['url'])
                 except (ValueError,KeyError): continue
@@ -74,6 +97,15 @@ class Registry:
     def export(self):
         with closing(sqlite3.connect(self.path)) as db:
             companies=[{'id':i,'name':n,'identity_basis':'normalized_name_unverified','sources':[x[0] for x in db.execute('SELECT DISTINCT url FROM company_sources WHERE company_id=?',(i,))]} for i,n in db.execute('SELECT id,name FROM companies ORDER BY name')]
+            from .qualification import qualify
+            profiles={i:json.loads(p) for i,p in db.execute('SELECT id,payload FROM company_profiles')}
+            edges=db.execute('SELECT origin,target FROM official_edges').fetchall()
+            for company in companies:
+                profile=profiles.get(company['id'])
+                company['aliases']=profile['aliases'] if profile else []
+                company['official_domains']=profile['official_domains'] if profile else []
+                company['identity_basis']='user_configured' if profile else 'normalized_name_unverified'
+                company['source_evidence']=[{'url':url,**(qualify(url,profile,edges) if profile else {'status':'unverified','basis':'No company profile configured'})} for url in company['sources']]
             sources=[]
             for url,host,ats in db.execute('SELECT url,host,ats FROM sources ORDER BY url'):
                 history=[{'run_id':r,'observed_at':t,'status':s,'content_hash':h,'http_status':code} for r,t,s,h,code in db.execute('SELECT run_id,observed_at,status,content_hash,http_status FROM source_observations WHERE url=? ORDER BY observed_at,run_id',(url,))]

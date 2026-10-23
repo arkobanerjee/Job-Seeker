@@ -13,6 +13,9 @@ class Questions:
             db.execute("CREATE TABLE IF NOT EXISTS questions(id TEXT PRIMARY KEY, run_id TEXT, revision TEXT, prompt TEXT, reason TEXT, answer TEXT, delivered INTEGER DEFAULT 0)")
             if 'message_id' not in [r[1] for r in db.execute("PRAGMA table_info(questions)")]:
                 db.execute("ALTER TABLE questions ADD COLUMN message_id INTEGER")
+            if 'cancelled' not in [r[1] for r in db.execute("PRAGMA table_info(questions)")]:db.execute("ALTER TABLE questions ADD COLUMN cancelled INTEGER DEFAULT 0")
+    def cancel(self,ident):
+        with closing(sqlite3.connect(self.path)) as db,db:db.execute('UPDATE questions SET cancelled=1 WHERE id=?',(ident,))
     def ask(self,run_id,revision,prompt,reason):
         if not prompt.strip() or len(prompt)>1500 or len(reason)>1000: raise ValueError("Invalid question")
         ident=hashlib.sha256(json.dumps([run_id,revision,prompt],ensure_ascii=False).encode()).hexdigest()[:24]
@@ -43,7 +46,7 @@ class Questions:
     def pending(self):
         with closing(sqlite3.connect(self.path)) as db:
             db.row_factory=sqlite3.Row
-            return [dict(x) for x in db.execute("SELECT * FROM questions WHERE answer IS NULL")]
+            return [dict(x) for x in db.execute("SELECT * FROM questions WHERE answer IS NULL AND cancelled=0")]
     def delivered(self,ident,message_id):
         with closing(sqlite3.connect(self.path)) as db,db:
             db.execute("UPDATE questions SET delivered=1,message_id=? WHERE id=?",(message_id,ident))

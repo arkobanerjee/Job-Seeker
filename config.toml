@@ -66,3 +66,8 @@ max_jobs = 3
 # Reserve one of the existing query slots for evidence-backed expansion.
 enabled = false
 max_queries = 1
+
+[companies]
+# User-approved identity rules. Example:
+# profiles = [{ name = "Example", aliases = ["Example GmbH"], official_domains = ["example.com"] }]
+profiles = []

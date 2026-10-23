@@ -139,7 +139,7 @@ def run_cloud(resume=None,monitor=False,scheduled=False):
     for ident,decision in cloud.request('decisions').items():
         if ident in known: catalog.decide(ident,decision['decision'],decision.get('note',''))
     from .runner import run
-    folder,result=run(resume=resume,on_checkpoint=cloud.sync)
+    folder,result=run(resume=resume,on_checkpoint=cloud.sync,control=lambda ident:cloud.request("control/"+ident).get("action","run"))
     cloud.sync()
     if scheduled: cloud.request('monitor-status','PUT',{'status':result['status'],'run_id':result['run_id']})
     return folder,result

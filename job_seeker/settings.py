@@ -76,6 +76,38 @@ class Competitors(Strict):
     enabled: bool = False
     max_queries: int = Field(default=1,ge=1,le=2)
 
+class CompanyProfile(Strict):
+    name: str = Field(min_length=1,max_length=200)
+    aliases: list[str] = Field(default_factory=list,max_length=30)
+    official_domains: list[str] = Field(default_factory=list,max_length=10)
+
+    @model_validator(mode="after")
+    def validate_domains(self):
+        import re,ipaddress
+        from .registry import ATS
+        for domain in self.official_domains:
+            if domain!=domain.lower() or not re.fullmatch(r"[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?",domain) or '..' in domain or '.' not in domain:raise ValueError('Use lowercase domain names without URLs or wildcards')
+            if domain in ATS or any(domain.endswith('.'+d) for d in ATS):raise ValueError('Shared ATS domains cannot identify a company official domain')
+            if domain.endswith(('.local','.internal','.localhost')):raise ValueError('Private domains are unsupported')
+            try:ipaddress.ip_address(domain)
+            except ValueError:continue
+            raise ValueError('Official domains must be hostnames')
+        return self
+
+class Companies(Strict):
+    profiles: list[CompanyProfile] = Field(default_factory=list,max_length=200)
+
+    @model_validator(mode="after")
+    def unique_aliases(self):
+        seen={}
+        for profile in self.profiles:
+            for name in [profile.name,*profile.aliases]:
+                key=' '.join(name.split()).casefold()
+                if not key:raise ValueError('Company aliases cannot be empty')
+                if key in seen and seen[key]!=profile.name:raise ValueError('Company alias assigned to multiple profiles')
+                seen[key]=profile.name
+        return self
+
 class Settings(Strict):
     model: ModelSettings = Field(default_factory=ModelSettings)
     limits: Limits = Field(default_factory=Limits)
@@ -86,6 +118,7 @@ class Settings(Strict):
     signals: Signals = Field(default_factory=Signals)
     review: ReviewSettings = Field(default_factory=ReviewSettings)
     competitors: Competitors = Field(default_factory=Competitors)
+    companies: Companies = Field(default_factory=Companies)
 
 def load_settings(path=None):
     path=Path(path or ROOT/"config.toml").resolve()

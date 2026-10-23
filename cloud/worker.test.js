@@ -117,3 +117,19 @@ test('notification recovery dispatches separately and delivery metadata is priva
  globalThis.fetch=async(url,options)=>{mode=JSON.parse(options.body).inputs.mode;return new Response(null,{status:204})};
  try{assert.equal((await worker.fetch(req('/api/run','POST',{mode:'notifications'}),e)).status,200);assert.equal(mode,'notifications')}finally{globalThis.fetch=original}
 });
+
+test('pause cancel and resume respect terminal cancellation and authentication',async()=>{
+ const e=env();e.GITHUB_TOKEN='dispatch';e.GITHUB_REPOSITORY='owner/repo';e.GITHUB_REF='main';const run_id='9'.repeat(32);
+ await worker.fetch(req('/api/runs','PUT',[{run_id,status:'running',can_resume:false}]),e);
+ assert.equal((await worker.fetch(req('/api/control','POST',{run_id,action:'pause'},'wrong'),e)).status,401);
+ assert.equal((await worker.fetch(req('/api/control','POST',{run_id,action:'pause'}),e)).status,200);
+ assert.equal((await (await worker.fetch(req('/api/control/'+run_id),e)).json()).action,'pause');
+ await worker.fetch(req('/api/runs','PUT',[{run_id,status:'paused',can_resume:true}]),e);
+ const original=globalThis.fetch;globalThis.fetch=async()=>new Response(null,{status:204});
+ try{
+  assert.equal((await worker.fetch(req('/api/resume','POST',{run_id}),e)).status,200);
+  assert.equal((await (await worker.fetch(req('/api/control/'+run_id),e)).json()).action,'run');
+  assert.equal((await worker.fetch(req('/api/control','POST',{run_id,action:'cancel'}),e)).status,200);
+  assert.equal((await worker.fetch(req('/api/resume','POST',{run_id}),e)).status,409);
+ }finally{globalThis.fetch=original}
+});
