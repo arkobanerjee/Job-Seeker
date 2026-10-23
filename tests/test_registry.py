@@ -26,3 +26,13 @@ class RegistryTests(unittest.TestCase):
     def test_private_and_unsupported_sources_rejected(self):
         with self.assertRaises(ValueError):source_info('http://example.org/jobs')
         with self.assertRaises(ValueError):source_info('https://linkedin.com/jobs')
+
+    def test_cache_changes_with_content_or_context_and_oldest_source_first(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store=Registry(Path(tmp)/'registry.sqlite3');a='https://example.org/a';b='https://example.org/b'
+            store.ingest('one',[],{a:{'http_status':200,'text':'A','observed_at':'2026-10-20'},b:{'http_status':200,'text':'B','observed_at':'2026-10-21'}})
+            self.assertEqual(store.monitor_targets(1),[a])
+            store.save_assessment(a,'content','profile',{'findings':[]})
+            self.assertIsNotNone(store.cached_assessment(a,'content','profile'))
+            self.assertIsNone(store.cached_assessment(a,'changed','profile'))
+            self.assertIsNone(store.cached_assessment(a,'content','new-profile'))

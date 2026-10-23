@@ -89,9 +89,10 @@ def bootstrap():
         cloud.sync()
         cloud.settings()
 
-def run_cloud(resume=None):
+def run_cloud(resume=None,monitor=False):
     # Only the serialized GitHub workflow may own this state. No parallel local writes.
     if os.getenv('GITHUB_ACTIONS')!='true': raise ValueError('Cloud worker runs through the serialized GitHub Actions workflow')
+    if not resume: os.environ['JOB_SEEKER_MONITORING']='true' if monitor else 'false'
     cloud=Cloud(); unpack(cloud.request('state'))
     for name,content in cloud.request('settings').items():
         if name not in ('config.toml','prompts/master.md','private/profile.md','private/resume.md') or not isinstance(content,str): raise ValueError('Unexpected cloud settings')
@@ -122,7 +123,7 @@ def run_cloud(resume=None):
 
 def main():
     import argparse
-    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','settings']); parser.add_argument('--run-id')
+    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','settings']); parser.add_argument('--run-id')
     args=parser.parse_args()
     if args.command=='bootstrap': bootstrap(); print('Private cloud state initialized')
     elif args.command=='settings':
@@ -130,7 +131,7 @@ def main():
         settings,base=load_settings(); render_prompt(settings,base)
         Cloud().settings(); print('Private cloud settings updated for subsequent runs')
     else:
-        _,result=run_cloud(args.run_id)
+        _,result=run_cloud(args.run_id,monitor=args.command=='monitor')
         print(json.dumps({'run_id':result['run_id'],'status':result['status'],'findings':len(result['findings'])}))
         if result.get('error_type'): raise SystemExit(1)
 

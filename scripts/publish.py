@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/company-source-registry'
+BRANCH='codex/repeat-source-monitoring'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -34,9 +34,9 @@ def main():
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds persistent company/source memory and a history view in both dashboards. Research checkpoints populate employer associations, ATS detection, retrieval status and content hashes. Shared ATS hosts do not merge different company names; official ownership and name-based identity remain explicitly unverified. Failed retrieval is distinct from closure.\n\nCloud snapshots include the private registry and expose its export through an authenticated endpoint. Historical checkpoints can populate the registry without paid searches. Recurring checks, structured ATS collectors and alias reconciliation remain future work.\n\nValidation: 30 Python tests and 7 Node tests pass, covering idempotent observations, shared ATS identity, text changes, unavailable pages and private registry access. No paid searches or production deployment performed for this change.')
+        body=('Adds on-demand saved-source monitoring through the dashboard and GitHub workflow. Checks revisit oldest observed source URLs within existing page and budget caps without discovery searches. A durable assessment cache reuses model output only when page input, links, profile/prompt, model configuration, policy and schema match. Changes trigger reassessment, while unavailable pages remain distinct from closure.\n\nValidation: 32 Python tests and 8 Node tests pass. An offline repeated-monitor run verifies no searches, no repeated assessment for unchanged input, and reassessment after a profile change. Dashboard script syntax checked. No paid searches or live deployment performed.\n\nRecurring scheduling and structured ATS collection remain pending. Cloud keeps its whole-run reservation policy, so cached monitoring does not bypass the five-dollar review gate.')
         pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Remember companies and career sources across research runs','body':body})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Recheck saved sources and reuse unchanged assessments','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

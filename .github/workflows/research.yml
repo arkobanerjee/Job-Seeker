@@ -2,6 +2,12 @@ name: Private job research
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: Discovery or saved-source monitoring
+        required: false
+        default: discovery
+        type: choice
+        options: [discovery, monitor]
       run_id:
         description: 'Optional saved run ID to resume'
         required: false
@@ -33,11 +39,14 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           JOB_SEEKER_URL: ${{ secrets.JOB_SEEKER_URL }}
           JOB_SEEKER_APP_TOKEN: ${{ secrets.JOB_SEEKER_APP_TOKEN }}
+          RESEARCH_MODE: ${{ inputs.mode }}
           RESUME_RUN_ID: ${{ inputs.run_id }}
         shell: bash
         run: |
           if [ -n "$RESUME_RUN_ID" ]; then
             python -m job_seeker.cloud run --run-id "$RESUME_RUN_ID"
+          elif [ "$RESEARCH_MODE" = "monitor" ]; then
+            python -m job_seeker.cloud monitor
           else
             python -m job_seeker.cloud run
           fi

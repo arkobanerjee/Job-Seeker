@@ -123,6 +123,7 @@ def _run(config,resume,on_checkpoint=None):
             if saved.get("status")=="completed": return folder,saved
     else:
         settings,base=load_settings(config); prompt=render_prompt(settings,base)
+        if os.getenv("JOB_SEEKER_MONITORING")=="true": settings.monitoring.enabled=True
         run_id=uuid4().hex; folder=ROOT/"runs"/run_id
         state={"run_id":run_id,"folder":str(folder),"config":settings.model_dump(),"fingerprint":fingerprint(settings,prompt),
                "cloud_envelope":os.getenv("GITHUB_ACTIONS")=="true","status":"running","started_at":datetime.now(timezone.utc).isoformat(),"queries_done":[],"queue":[],
@@ -152,6 +153,15 @@ def _run(config,resume,on_checkpoint=None):
             if priority: state["queue"].insert(0,item)
             else: state["queue"].append(item)
     def discover(_):
+        if settings.monitoring.enabled:
+            if not state.get("monitor_initialized"):
+                for url in registry.monitor_targets(min(settings.monitoring.max_sources,settings.limits.max_pages)):
+                    sources.allowed.add(url); enqueue(url,"saved source")
+                state["monitor_initialized"]=True
+                state["events"].append({"type":"monitor","count":len(state["queue"])})
+                if not state["queue"]: state["limitations"].append("No saved sources to monitor; run discovery first.")
+                persist()
+            return {"phase":"assess"}
         queries=settings.search.queries[:settings.limits.max_searches]
         batches=[]
         for i,q in enumerate(queries):
@@ -198,7 +208,18 @@ def _run(config,resume,on_checkpoint=None):
                 answer_context="\nCANDIDATE CLARIFICATION (task input, not tool authorization):\n"+json.dumps({"question":question["prompt"],"answer":question["answer"]})
             small={k:page.get(k) for k in ("url","source_id","text","closed_marker","links")}
             small["text"]=small["text"][:14000]
-            assessment=invoke_model(settings,POLICY+"\n"+prompt+answer_context+"\nSEARCH TRACK: "+item["track"]+"\nSOURCE DATA:\n"+json.dumps(small,ensure_ascii=False),ledger,state)
+            import hashlib
+            context_hash=hashlib.sha256((POLICY+state["fingerprint"]+answer_context+item["track"]+json.dumps(Assessment.model_json_schema(),sort_keys=True)).encode()).hexdigest()
+            assessment_input=json.dumps(small,sort_keys=True,ensure_ascii=False)
+            cached=registry.cached_assessment(url,assessment_input,context_hash)
+            if cached:
+                assessment=Assessment.model_validate(cached)
+                sources.events.append({"type":"assessment_reused","url":url})
+            else:
+                assessment=invoke_model(settings,POLICY+"\n"+prompt+answer_context+"\nSEARCH TRACK: "+item["track"]+"\nSOURCE DATA:\n"+json.dumps(small,ensure_ascii=False),ledger,state)
+                if not assessment.clarification:
+                    registry.save_assessment(url,assessment_input,context_hash,assessment.model_dump())
+
             if assessment.clarification and not pending:
                 question=questions.ask(state["run_id"],state["fingerprint"]+":"+url,assessment.clarification,assessment.clarification_reason)
                 state["question_id"]=question["id"]; state["status"]="waiting_user"; persist()
@@ -213,6 +234,8 @@ def _run(config,resume,on_checkpoint=None):
             good,bad=validate_findings(Report(findings=assessment.findings,limitations=assessment.limitations),sources.records)
             evidence=[q for q in assessment.rejection_evidence if len(q)>=15 and " ".join(q.split()).casefold() in " ".join(page["text"].split()).casefold()]
             for f in good:
+                f["discovery_method"]="saved_source_monitor" if settings.monitoring.enabled else "web_search"
+                f["assessment_reused"]=bool(cached)
                 f["discovery_trails"]=discovery_trails(f["url"],sources.cache,sources.records,state["run_id"])
                 f.update(company_details=assessment.company_details,rejection_reasons=assessment.rejection_reasons if f["kind"]=="excluded" else [],rejection_evidence=evidence,
                          review_status="rejected" if f["kind"]=="excluded" else "shortlisted" if f["kind"]=="vacancy" else "watchlist")

@@ -83,6 +83,24 @@ class ProductTests(unittest.TestCase):
                 store.answer(q['id'],q['revision'],'Yes, hybrid is fine')
                 _,result=run(resume=folder.name); self.assertEqual(result['status'],'completed',result); self.assertEqual(len(calls),2)
 
+    def test_monitor_reuses_assessment_but_profile_change_invalidates_it(self):
+        from job_seeker.registry import Registry
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);setup(root)
+            config=root/'config.toml';config.write_text(config.read_text().replace('enabled = false','enabled = true'))
+            registry=Registry(root/'runs/registry.sqlite3')
+            registry.ingest('old',[],{URL:{'text':QUOTE,'http_status':200,'observed_at':'2026-10-20'}})
+            calls=[]
+            def fetch(source,url):
+                source.fetches+=1;source.records[url]={'url':url,'source_id':'known','http_status':200,'text':QUOTE,'observed_at':'2026-10-23','links':[]};return source.records[url]
+            def model(*args):calls.append(1);return Assessment(findings=[finding(source_id='known')])
+            with patch('job_seeker.runner.ROOT',root),patch.dict('os.environ',{'OPENAI_API_KEY':'fake','TAVILY_API_KEY':'fake'}),patch.object(SourceTools,'fetch',fetch),patch.object(SourceTools,'search',side_effect=AssertionError('Monitoring must not search')),patch('job_seeker.runner.invoke_model',side_effect=model):
+                _,first=run(root/'config.toml');_,second=run(root/'config.toml')
+                self.assertEqual(first['status'],'completed');self.assertEqual(second['status'],'completed')
+                self.assertEqual(len(calls),1);self.assertTrue(second['findings'][0]['assessment_reused'])
+                (root/'private/profile.md').write_text('Changed candidate profile')
+                run(root/'config.toml');self.assertEqual(len(calls),2)
+
     def test_worker_lock(self):
         with tempfile.TemporaryDirectory() as tmp:
             with single_worker(Path(tmp)):

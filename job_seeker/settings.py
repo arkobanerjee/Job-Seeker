@@ -54,12 +54,17 @@ class Search(Strict):
 class Notifications(Strict):
     telegram: bool = False
 
+class Monitoring(Strict):
+    enabled: bool = False
+    max_sources: int = Field(default=12, ge=1, le=40)
+
 class Settings(Strict):
     model: ModelSettings = Field(default_factory=ModelSettings)
     limits: Limits = Field(default_factory=Limits)
     prompts: Prompts = Field(default_factory=Prompts)
     search: Search
     notifications: Notifications = Field(default_factory=Notifications)
+    monitoring: Monitoring = Field(default_factory=Monitoring)
 
 def load_settings(path=None):
     path=Path(path or ROOT/"config.toml").resolve()

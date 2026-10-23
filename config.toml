@@ -34,3 +34,8 @@ queries = [
 
 [notifications]
 telegram = false
+
+[monitoring]
+# True revisits saved sources instead of issuing web searches.
+enabled = false
+max_sources = 12
