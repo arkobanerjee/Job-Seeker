@@ -197,6 +197,37 @@ def maintain_cloud():
         cloud.sync_views(root)
         return {'archived':len(ids),'run_ids':ids}
 
+
+def observe_cloud_boards(scheduled=False):
+    if os.getenv('GITHUB_ACTIONS')!='true':raise ValueError('Board observations through the serialized workflow')
+    import tempfile,tomllib
+    from pathlib import Path
+    from datetime import datetime,timezone
+    from zoneinfo import ZoneInfo
+    from .settings import Settings
+    from .registry import Registry
+    from .boards import observe,board_targets
+    from .health import inspect_snapshot
+    from .research import write_json
+    cloud=Cloud();settings=Settings.model_validate(tomllib.loads(cloud.request('settings')['config.toml']))
+    if not settings.monitoring.board_observations:return {'status':'skipped','reason':'board_observations_disabled'}
+    if scheduled and (not settings.monitoring.schedule_enabled or datetime.now(ZoneInfo('Europe/Berlin')).weekday()>=5):return {'status':'skipped','reason':'schedule_disabled_or_weekend'}
+    current,etag=cloud.request('state',return_etag=True)
+    if not etag or inspect_snapshot(current)['status']=='blocked':raise ValueError('State health/version blocks board observations')
+    with tempfile.TemporaryDirectory() as tmp:
+        root=Path(tmp);unpack(current,root);registry=Registry(root/'runs/registry.sqlite3')
+        if not board_targets(registry,settings.monitoring.board_urls,settings.monitoring.max_boards):return {'status':'skipped','reason':'no_known_supported_boards'}
+        backup_cloud(cloud,current)
+        ident=uuid4().hex;started=datetime.now(timezone.utc).isoformat()
+        result=observe(registry,ident,settings.monitoring.board_urls,settings.monitoring.max_boards)
+        result.update(started_at=started,finished_at=datetime.now(timezone.utc).isoformat())
+        folder=root/'runs'/ident;folder.mkdir()
+        write_json(folder/'result.json',result)
+        write_json(folder/'checkpoint.json',{**result,'config':settings.model_dump(),'cloud_envelope':False,'scheduled':scheduled,'queue':[],'cache':{},'limitations':['Board counts only; no job-fit assessment or hiring probability.']})
+        cloud.request('state','PUT',pack(root),True,expected_etag=etag)
+        cloud.sync_views(root)
+        return {k:result[k] for k in ('run_id','status','mode','targets','searches','model_calls')}
+
 def retry_notifications():
     if os.getenv('GITHUB_ACTIONS')!='true':raise ValueError('Retry through the serialized GitHub workflow')
     from .questions import Questions,send_question
@@ -214,9 +245,10 @@ def retry_notifications():
 
 def main():
     import argparse
-    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','scheduled','notifications','backup','restore','diagnostics','maintenance','settings']); parser.add_argument('--run-id'); parser.add_argument('--backup-id')
+    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','scheduled','notifications','backup','restore','diagnostics','maintenance','boards','scheduled-boards','settings']); parser.add_argument('--run-id'); parser.add_argument('--backup-id')
     args=parser.parse_args()
-    if args.command=='maintenance':print(json.dumps(maintain_cloud()))
+    if args.command in ('boards','scheduled-boards'):print(json.dumps(observe_cloud_boards(args.command=='scheduled-boards')))
+    elif args.command=='maintenance':print(json.dumps(maintain_cloud()))
     elif args.command=='diagnostics':
         from .health import diagnose_cloud
         report=diagnose_cloud(Cloud());print(json.dumps(report))

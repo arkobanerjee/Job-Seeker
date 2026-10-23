@@ -59,6 +59,18 @@ class Monitoring(Strict):
     daily_run_usd: float = Field(default=0.25, gt=0, le=2, allow_inf_nan=False)
     enabled: bool = False
     max_sources: int = Field(default=12, ge=1, le=40)
+    board_observations: bool = True
+    max_boards: int = Field(default=4,ge=1,le=10)
+    board_urls: list[str] = Field(default_factory=list,max_length=20)
+
+    @model_validator(mode='after')
+    def public_boards(self):
+        from .ats import endpoint
+        from .sources import normalized
+        for url in self.board_urls:
+            info=endpoint(normalized(url))
+            if not info or info[2] is not None:raise ValueError('Board seeds must be public Greenhouse or Lever board URLs')
+        return self
 
 class SignalQuery(Query):
     route: Literal["company","hiring","technology","product","organization"] = "company"

@@ -289,3 +289,51 @@ also reads old snapshots conservatively: all unanswered legacy questions protect
 associated runs. The newest 20/30-day rules mean there is still no eligible old live
 evidence; actual aged-data archival remains covered by offline tests until eligible
 history naturally exists.
+
+
+## Public board observations and optional-route acceptance
+
+The weekday workflow can collect bounded public ATS counts before paid research.
+Set monitoring.board_observations=false to disable it. Scheduled collection also
+requires monitoring.schedule_enabled and skips weekends. The default cap is four
+boards (monitoring.max_boards); monitoring.board_urls accepts only supported public
+Greenhouse/Lever board URLs. Existing ATS posting URLs in company/source memory also
+supply board targets; duplicate tenants are collapsed and oldest observations are
+visited first. A board source is not a claim of official employer ownership.
+
+This path uses the existing robots-aware HTTPS collector and no model, Tavily search
+or paid-call reservation. Existing GitHub/R2 infrastructure usage still applies. It
+runs in the same serialized workflow, takes a private pre-write backup and uses a
+snapshot version check. Source failures do not become zero vacancies. Results appear
+as board_observations in history; they are not job-fit assessments or notifications
+of confirmed openings. It may continue observing counts when paid research is blocked
+by the spending gate, unless disabled or blocked by state capacity/integrity.
+
+Counts require actual captures on distinct UTC dates. Missing provenance, changed
+provider/tenant/API/sample scope or invalid counts cannot produce a growth claim.
+After a collection-policy change, a fresh baseline must accumulate at least two
+real dates under the new method. Provider-reported totals and bounded API sample
+counts are labelled separately; neither predicts future hiring. Actual dates and
+count provenance are retained. No synthetic historical date is inserted into live
+state to make a trend appear.
+
+A real board read on 2026-10-23 produced a provider-reported baseline; a second board
+was unavailable under collector limits. The first baseline is private acceptance
+evidence, not a multi-day trend or a populated live monitoring history. Deployment
+and subsequent weekday observations are required for that live history. Actual
+aged-data archival likewise remains pending naturally eligible runs.
+
+Two additional live model probes used privately frozen public-source evidence: an
+explicit vendor comparison and two related announcement excerpts. Competitor names
+and supporting quotes passed validation; the corroboration verdict was
+supports_same_claim. Publisher independence remained unverified: issuer/investor
+announcements can share a press release, and separate hosts do not establish
+independent reporting. This is two focused probes, not broad route accuracy. The
+$0.04 cloud envelope remains reserved; the configured token-cost estimate was
+$0.0020602, not an invoice. No paid web search was used. Optional competitor and
+corroboration discovery flags have not been automatically enabled by this test.
+
+`python -m job_seeker.route_acceptance --input private/frozen-route-probes.json`
+explicitly reserves that envelope and makes at most two model calls. The input and
+outputs stay private; source text is untrusted data and expected labels stay out of
+model context. Do not add this paid probe to CI or the weekday workflow.

@@ -42,7 +42,7 @@ def parse(info,body):
         total=data.get('meta',{}).get('total') if provider=='greenhouse' else None
         if not isinstance(total,int) or isinstance(total,bool) or total<0:total=None
         return {'structured_index':True,'text':'Public ATS job index: '+'; '.join(t for t,u in candidates),'links':[u for t,u in candidates],
-                'ats_provider':provider,'ats_tenant':tenant,'api_url':api,'returned_count':len(items),'reported_total':total,'collection_scope':'Bounded sample, at most 30 links; not a complete vacancy census'}
+                'ats_provider':provider,'ats_tenant':tenant,'api_url':api,'returned_count':len(items),'reported_total':total,'sample_limit':100 if provider=='lever' else None,'collection_scope':'Bounded sample, at most 30 links; not a complete vacancy census'}
     if not isinstance(data,dict) or str(data.get('id'))!=job_id:raise ValueError('ATS posting ID mismatch')
     if provider=='greenhouse':
         title=data.get('title','');location=(data.get('location') or {}).get('name','');content=html.unescape(data.get('content',''))
