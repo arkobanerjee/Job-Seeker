@@ -29,3 +29,14 @@ class QuestionTests(unittest.TestCase):
             with patch("job_seeker.telegram.send",side_effect=ValueError("offline")):
                 with self.assertRaises(ValueError): send_question(store,q)
             self.assertFalse(store.get(q["id"])["delivered"])
+
+    def test_plain_reply_uses_saved_message_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store=Questions(Path(tmp)/"q.sqlite3");q=store.ask("run","rev","Question?","Reason")
+            with patch("job_seeker.telegram.send",return_value=42) as send:
+                send_question(store,q)
+                self.assertTrue(send.call_args.kwargs['force_reply'])
+                self.assertNotIn(q['id'],send.call_args.args[0])
+            message={"chat":{"id":123,"type":"private"},"from":{"id":123},"text":"Yes","reply_to_message":{"message_id":42,"from":{"is_bot":True}}}
+            self.assertEqual(accept_reply(store,message,123),'run')
+            self.assertEqual(store.get(q['id'])['answer'],'Yes')

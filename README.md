@@ -117,7 +117,8 @@ evidence stays unavailable. These paths are evidence, not model reasoning logs.
 
 The assessor can request consequential candidate input. The runner persists a
 waiting_user checkpoint and question, then exits. With Telegram enabled, answer
-using /answer QUESTION_ID your answer. Cloud replies require a webhook secret and
+by replying directly to the bot question. Question IDs stay internal; the old
+/answer command remains supported for older messages. Cloud replies require a webhook secret and
 the configured private owner chat; answers are immutable and resume the saved run.
 Resume reuses that run's budget envelope and per-call ledger. Answers are task input,
 not permission to contact employers. Duplicate replies can queue redundant serialized
