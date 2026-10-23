@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/source-qualification-and-controls'
+BRANCH='codex/corroboration-and-private-backups'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -30,13 +30,13 @@ def main():
         parent=head.json()['object']['sha'] if exists else api('GET','/git/ref/heads/main')['object']['sha']
         tree_base=api('GET','/git/commits/'+parent)['tree']['sha']
         tree=api('POST','/git/trees',{'base_tree':tree_base,'tree':entries})
-        commit=api('POST','/git/commits',{'message':'Record and display job discovery evidence paths','tree':tree['sha'],'parents':[parent]})
+        commit=api('POST','/git/commits',{'message':'Add signal corroboration and private backup restore','tree':tree['sha'],'parents':[parent]})
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds two product capabilities: user-configured company/source qualification and cooperative pause/cancel controls. Company aliases reconcile registry identities; official-domain matches and observed links to exact postings or ATS tenants retain their evidence. Shared ATS domains and conflicting aliases are rejected. Missing evidence remains unverified.\n\nDashboard controls persist outside run snapshots and stop subsequent searches, fetches and model calls at tool boundaries. Paused runs can continue with their original envelope; cancellation is terminal and excludes pending questions/retries. In-flight calls may still finish and incur charges.\n\nValidation: 67 Python tests and 13 Node tests pass, covering alias migration, similar-host and cross-tenant rejection, authenticated controls, pause before paid work, terminal cancellation and existing regressions. Dashboard syntax checked. No paid search or model calls were made; live acceptance remains pending. Independent signal corroboration and release hardening remain unfinished.')
-        pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Qualify company sources and add pause/cancel controls','body':body})
+        body=('Adds bounded, independent-context comparison of company signals collected from different sources. Supporting and contradictory verdicts require quotes from both excerpts. Different hostnames alone do not establish publisher independence; configured publisher mappings distinguish known ownership. Corroboration is configurable and disabled by default, sharing existing call and spending limits.\n\nAdds authenticated private R2 backups with SHA-256 integrity metadata, five-snapshot retention, dashboard controls and serialized workflow modes. Research runs take a snapshot before work. Restore validates archives, preserves current spending records, notification receipts, questions, preferences and paused/waiting task continuity, creates a pre-restore backup and uses a state version check to reject concurrent changes. This does not remove the active archive size limit or replace an off-account backup.\n\nValidation: 73 Python tests and 15 Node tests pass, including corroboration quote checks, an integrated mocked-provider run, backup retention, archive integrity, restore continuity and concurrent-update rejection. Dashboard script syntax checked. No paid calls or live restore were performed for this batch. Live acceptance and final release evaluation remain pending.')
+        pr=prs[0] if prs else api('POST','/pulls',{'title':'Corroborate company signals and add private backup/restore','head':BRANCH,'base':'main','body':body,'draft':True})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Corroborate company signals and add private backup/restore','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

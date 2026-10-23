@@ -1,5 +1,6 @@
 // One-owner control plane. All data endpoints require a high-entropy bearer secret.
 import { page } from './page.js';
+import {backupApi} from './backups.js';
 import {readControl,setControl} from './controls.js';
 import { webhook,questionApi,resume } from './questions.js';
 const headers = {'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
@@ -13,6 +14,7 @@ export default {
     if(!env.APP_TOKEN || request.headers.get('Authorization')!==`Bearer ${env.APP_TOKEN}`) return reply({error:'Unauthorized'},401);
     if(request.headers.get('Origin') && request.headers.get('Origin')!==u.origin) return reply({error:'Invalid origin'},403);
     try {
+      const backupResponse=await backupApi(request,env,u.pathname);if(backupResponse)return backupResponse;
       const questionResponse=await questionApi(request,env,u.pathname);
       if(questionResponse)return questionResponse;
       if(u.pathname==='/api/monitor-status' && request.method==='GET') {
@@ -54,9 +56,10 @@ export default {
       if(u.pathname==='/api/run' && request.method==='POST') {
         if(!env.GITHUB_TOKEN) return reply({error:'GitHub dispatch not configured'},409);
         const body=await request.json(),mode=body.mode||'discovery';
-        if(!['discovery','monitor','notifications'].includes(mode))return reply({error:'Invalid research mode'},400);
+        if(!['discovery','monitor','notifications','backup','restore'].includes(mode))return reply({error:'Invalid research mode'},400);
+        const inputs={mode};if(mode==='restore'){if(!/^[a-f0-9]{32}$/.test(body.backup_id))return reply({error:'Invalid backup ID'},400);inputs.backup_id=body.backup_id}
         const response=await fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/research.yml/dispatches`,{
-          method:'POST',headers:{Authorization:`Bearer ${env.GITHUB_TOKEN}`,'User-Agent':'Job-Seeker','Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:env.GITHUB_REF,inputs:{mode}})});
+          method:'POST',headers:{Authorization:`Bearer ${env.GITHUB_TOKEN}`,'User-Agent':'Job-Seeker','Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:env.GITHUB_REF,inputs})});
         return response.status===204 ? reply({queued:true}) : reply({error:'GitHub dispatch failed',status:response.status},502);
       }
       if(u.pathname==='/api/decisions' && request.method==='GET') {
@@ -126,12 +129,12 @@ export default {
       const key=keyFor(u.pathname);
       if(key && request.method==='GET') {
         const object=await env.STATE.get(key);
-        return object ? new Response(object.body,{headers:{...headers,'Content-Type':key.endsWith('.zip')?'application/zip':'application/json'}}) : reply({error:'Not initialized'},404);
+        return object ? new Response(object.body,{headers:{...headers,'Content-Type':key.endsWith('.zip')?'application/zip':'application/json','ETag':'"'+object.etag+'"'}}) : reply({error:'Not initialized'},404);
       }
       if(key && request.method==='PUT') {
         const length=Number(request.headers.get('Content-Length'));
         if(!length || length>20000000) return reply({error:'State limit is 20 MB'},413);
-        await env.STATE.put(key,request.body); return reply({saved:true});
+        const match=request.headers.get('If-Match');const stored=await env.STATE.put(key,request.body,match?{onlyIf:{etagMatches:match.replaceAll('"','')}}:{});return stored?reply({saved:true}):reply({error:'State changed; restore aborted'},409);
       }
       return reply({error:'Not found'},404);
     } catch { return reply({error:'Request failed'},500); }

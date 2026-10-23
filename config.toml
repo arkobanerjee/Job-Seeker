@@ -71,3 +71,10 @@ max_queries = 1
 # User-approved identity rules. Example:
 # profiles = [{ name = "Example", aliases = ["Example GmbH"], official_domains = ["example.com"] }]
 profiles = []
+
+[corroboration]
+# Compares already collected sources; no extra searches.
+enabled = false
+max_pairs = 2
+# Only add ownership groups you have verified; different hosts alone are insufficient.
+publishers = {}

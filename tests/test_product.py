@@ -188,6 +188,29 @@ class ProductTests(unittest.TestCase):
                 self.assertEqual(result['status'],'cancelled')
                 with self.assertRaises(ValueError):run(resume=folder.name)
 
+    def test_corroboration_reviews_two_saved_sources_with_exact_quotes(self):
+        import re
+        from job_seeker.signals import Signal
+        from job_seeker.registry import Registry
+        from job_seeker.corroboration import CorroborationReview
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);setup(root);config=root/'config.toml'
+            config.write_text(re.sub(r'(\[corroboration\][\s\S]*?enabled\s*=\s*)false',r'\1true',config.read_text()))
+            a='Example Company launched a RAG platform for enterprise customers.'
+            b='The Example Company RAG platform launch targets enterprise users.'
+            url='https://b.example/announcement';calls=[]
+            Registry(root/'runs/registry.sqlite3').ingest_signals([{'company':'Example Company','kind':'product','title':'RAG platform launch','url':'https://a.example/announcement','evidence_quote':a,'event_date':None,'run_id':'old'}])
+            def search(source,query):source.allowed.add(url);source.cache[query]=[{'url':url}];return source.cache[query]
+            def fetch(source,target):
+                source.fetches+=1;source.records[target]={'url':target,'source_id':'known','text':b,'http_status':200,'observed_at':'today','links':[]};return source.records[target]
+            def model(*args,**kwargs):
+                calls.append(1)
+                if kwargs.get('schema') is CorroborationReview:return CorroborationReview(verdict='supports_same_claim',reason='Same platform launch',quote_a=a,quote_b=b)
+                return Assessment(signals=[Signal(company='Example Company',kind='product',title='RAG platform launch',source_id='known',evidence_quote=b,relevance='Relevant RAG work')])
+            with patch('job_seeker.runner.ROOT',root),patch.dict('os.environ',{'OPENAI_API_KEY':'fake','TAVILY_API_KEY':'fake'}),patch.object(SourceTools,'search',search),patch.object(SourceTools,'fetch',fetch),patch('job_seeker.runner.invoke_model',side_effect=model):
+                _,result=run(config);self.assertEqual(result['status'],'completed');self.assertEqual(len(calls),2)
+                checks=Registry(root/'runs/registry.sqlite3').export()['corroborations'];self.assertEqual(checks[0]['verdict'],'supports_same_claim');self.assertEqual(checks[0]['independence'],'publisher_independence_unverified')
+
     def test_worker_lock(self):
         with tempfile.TemporaryDirectory() as tmp:
             with single_worker(Path(tmp)):

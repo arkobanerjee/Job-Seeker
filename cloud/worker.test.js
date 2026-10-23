@@ -8,6 +8,7 @@ class R2 {
     if(c?.etagDoesNotMatch==='*'&&old)return null;
     if(c?.etagMatches&&c.etagMatches!==old?.etag)return null;
     const value={body,etag:String(++this.version)};this.objects.set(key,value);return value}
+  async delete(keys){for(const key of Array.isArray(keys)?keys:[keys])this.objects.delete(key)}
   async list({prefix}){return {objects:[...this.objects.keys()].filter(x=>x.startsWith(prefix)).map(key=>({key}))}}
 }
 function env(){return {STATE:new R2(),APP_TOKEN:'test-only'}}
@@ -132,4 +133,24 @@ test('pause cancel and resume respect terminal cancellation and authentication',
   assert.equal((await worker.fetch(req('/api/control','POST',{run_id,action:'cancel'}),e)).status,200);
   assert.equal((await worker.fetch(req('/api/resume','POST',{run_id}),e)).status,409);
  }finally{globalThis.fetch=original}
+});
+
+test('private backups retain five snapshots and reject reused IDs',async()=>{
+ const e=env();
+ assert.equal((await worker.fetch(req('/api/backups','GET',null,'wrong'),e)).status,401);
+ for(let i=0;i<6;i++){
+  const id=i.toString(16).padStart(32,'0');const body=new TextEncoder().encode('private-test-archive-'+i);
+  const r=new Request('https://jobs.example/api/backup/'+id,{method:'PUT',headers:{Authorization:'Bearer test-only','Content-Length':String(body.length)},body});
+  assert.equal((await worker.fetch(r,e)).status,200);
+ }
+ const rows=await (await worker.fetch(req('/api/backups'),e)).json();assert.equal(rows.length,5);
+ const id=rows[0].id,body=new TextEncoder().encode('again');
+ const request=new Request('https://jobs.example/api/backup/'+id,{method:'PUT',headers:{Authorization:'Bearer test-only','Content-Length':String(body.length)},body});
+ assert.equal((await worker.fetch(request,e)).status,409);
+ assert.ok(rows.every(x=>x.sha256.length===64));assert.ok(!e.STATE.objects.has('budget.json'));
+});
+test('version-checked state updates cannot overwrite a changed snapshot',async()=>{
+ const e=env();await e.STATE.put('state/latest.zip','original');const body=new TextEncoder().encode('restored');
+ const request=new Request('https://jobs.example/api/state',{method:'PUT',headers:{Authorization:'Bearer test-only','Content-Length':String(body.length),'If-Match':'"wrong"'},body});
+ assert.equal((await worker.fetch(request,e)).status,409);
 });
