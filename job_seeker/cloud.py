@@ -61,22 +61,26 @@ class Cloud:
                     'Content-Type':'application/zip' if binary else 'application/json',**({'If-Match':expected_etag} if expected_etag else {})},content=body if binary else None,json=body if not binary else None)
             if response.status_code!=200: raise ValueError('Cloud request failed: HTTP '+str(response.status_code))
             if return_etag:return response.content,response.headers.get('etag')
-            return response.content if method=='GET' and (path=='state' or path.startswith('backup/')) else response.json()
+            return response.content if method=='GET' and (path=='state' or path.startswith(('backup/','run-archive/'))) else response.json()
         except httpx.HTTPError: raise ValueError('Cloud connection failed') from None
 
     def sync(self):
         self.request('state','PUT',pack(),True)
-        catalog=Catalog(ROOT/'runs'/'catalog.sqlite3')
+        self.sync_views()
+
+    def sync_views(self,root=None):
+        root=root or ROOT
+        catalog=Catalog(root/'runs'/'catalog.sqlite3')
         self.request('catalog','PUT',catalog.list())
         from .history import run_history
-        self.request('runs','PUT',run_history(ROOT/'runs'))
+        self.request('runs','PUT',run_history(root/'runs'))
         from .outbox import Outbox
-        self.request('notifications','PUT',Outbox(ROOT/'runs/outbox.sqlite3').summary())
+        self.request('notifications','PUT',Outbox(root/'runs/outbox.sqlite3').summary())
         from .registry import Registry
-        registry=Registry(ROOT/'runs/registry.sqlite3'); registry.import_runs(ROOT/'runs')
+        registry=Registry(root/'runs/registry.sqlite3'); registry.import_runs(root/'runs')
         self.request('registry','PUT',registry.export())
         from .questions import Questions
-        for question in Questions(ROOT/'runs/questions.sqlite3').pending():
+        for question in Questions(root/'runs/questions.sqlite3').pending():
             self.request('question','POST',question)
 
     def settings(self):
@@ -174,6 +178,25 @@ def restore_cloud(ident):
     cloud.request('state','PUT',restored,True,expected_etag=etag)
     unpack(restored);cloud.sync()
 
+
+def maintain_cloud():
+    if os.getenv('GITHUB_ACTIONS')!='true':raise ValueError('Maintenance through the serialized workflow')
+    import tempfile
+    from pathlib import Path
+    from .retention import archive_terminal_runs
+    cloud=Cloud();current,etag=cloud.request('state',return_etag=True)
+    if not etag:raise ValueError('Missing state version; maintenance aborted')
+    with tempfile.TemporaryDirectory() as tmp:
+        root=Path(tmp);unpack(current,root)
+        from .retention import candidates
+        ids=candidates(root)
+        if not ids:return {'archived':0,'policy':'Keep newest 20 runs and at least 30 days; terminal runs only'}
+        backup_cloud(cloud,current)
+        ids,data=archive_terminal_runs(cloud,root)
+        cloud.request('state','PUT',data,True,expected_etag=etag)
+        cloud.sync_views(root)
+        return {'archived':len(ids),'run_ids':ids}
+
 def retry_notifications():
     if os.getenv('GITHUB_ACTIONS')!='true':raise ValueError('Retry through the serialized GitHub workflow')
     from .questions import Questions,send_question
@@ -191,9 +214,10 @@ def retry_notifications():
 
 def main():
     import argparse
-    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','scheduled','notifications','backup','restore','diagnostics','settings']); parser.add_argument('--run-id'); parser.add_argument('--backup-id')
+    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','scheduled','notifications','backup','restore','diagnostics','maintenance','settings']); parser.add_argument('--run-id'); parser.add_argument('--backup-id')
     args=parser.parse_args()
-    if args.command=='diagnostics':
+    if args.command=='maintenance':print(json.dumps(maintain_cloud()))
+    elif args.command=='diagnostics':
         from .health import diagnose_cloud
         report=diagnose_cloud(Cloud());print(json.dumps(report))
         if report['status']=='blocked':raise SystemExit(1)

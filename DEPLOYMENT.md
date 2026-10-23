@@ -81,8 +81,12 @@ If a token expires, refresh that credential and rerun deployment/secrets setup w
 resetting budgets. Storage preflight warns at 75% of the byte or file ceiling and blocks research at
 90%, before reserving paid work. Inspect Storage health on the dashboard and request
 a fresh check if it is stale. Backups retain five private snapshots but do not shrink
-the active state. There is no automatic evidence deletion or compaction yet. Stop
-and plan archival or storage migration before approaching the limit. Keep financial,
+the active state. Weekday maintenance moves eligible terminal-run evidence into private cold archives.
+It keeps the newest 20 runs and at least 30 days of evidence in active state, and
+protects resumable tasks, unresolved questions and outstanding delivery receipts.
+Every cold archive must pass checksum upload and readback before its active evidence
+is removed. Persistent databases are not pruned. Stop and plan database migration
+if those databases alone approach the capacity limit. Keep financial,
 question, delivery, catalog and registry records. A large in-flight run can still reach
 the limit; the preflight cannot predict its final size. Cloud job failures remain visible in
 GitHub; a killed process cannot reliably send a final Telegram message.
@@ -163,3 +167,66 @@ Scorer unit tests use explicitly authored outputs and do not establish model acc
 This evaluates extraction decisions, not independent reviewer quality, search recall,
 source freshness over time or live availability. Add independently labelled real
 examples privately before a release decision, and hold some out when tuning prompts.
+
+
+## Operating policy after acceptance
+
+- Keep a single serialized cloud writer. Weekday schedule remains 09:17 Europe/Berlin;
+  no automatic weekend research. The scheduled workflow runs notification recovery,
+  maintenance, then its bounded research check.
+- Keep the $5 cumulative review gate, $2 maximum run reservation and $0.25 scheduled
+  cap. There is no monthly reset and no automatic unlock of the original $20 allowance.
+  Compare provider billing with local observed estimates before approving more credit.
+  Missing usage, killed calls and ambiguous delivery keep their reservations. Do not
+  refund the difference between reservations and estimates automatically.
+- A dedicated acceptance run reserves at most $0.40 in the same cloud gate before
+  any model calls, with an isolated private ledger and no Tavily searches. Its ledger
+  is separate from the live research snapshot; the global envelope remains charged.
+  `python -m job_seeker.acceptance` is explicit paid work, never part of CI or the
+  weekday schedule. Keep its outputs under private/acceptance.
+- Active evidence retention: keep the newest 20 runs and at least 30 days. Only
+  completed/cancelled tasks can move to cold storage. Partial, failed, waiting and
+  paused tasks stay active. Preserve all catalog decisions, observations, company
+  memory, budgets, questions and delivery records. Download cold evidence through
+  the private dashboard. It does not automatically resume archived terminal tasks.
+- Cold evidence archives are immutable and have no automatic deletion. The five-copy
+  rolling backup policy is separate. Review cold-storage usage and account billing
+  monthly; same-account R2 storage does not protect against account loss. A partial
+  archive upload or checksum conflict stops maintenance; retain hot evidence and
+  inspect the private objects rather than overriding the conflict.
+- Byte/file preflight still warns at 75% and stops research at 90%. Cold archival does
+  not solve unbounded growth of the catalog/registry databases. That threshold is the
+  stop-and-migrate point, not permission to delete financial or decision history.
+- Recovery drills run with `python -m job_seeker.drills` locally and in CI. They use
+  actual runner/outbox code with injected tools, provider interruption and delivery
+  outcomes in an isolated temporary workspace. They do not send Telegram messages or
+  prove real provider delivery under every network failure. Interrupted assessments
+  may need retry; completed searches/pages must not repeat.
+
+## Acceptance evidence (2026-10-23)
+
+Merged PR15 diagnostics passed in the serialized live workflow. A fresh private
+backup was verified identical to current research before dispatching a live restore.
+That restore completed successfully; budget, questions, outbox, catalog, config,
+master prompt and profile bytes were preserved. This validates same-snapshot recovery,
+not a historical rollback after real data loss. An earlier isolated restore rehearsal
+also passed. Isolated pause/continue, terminal cancel, saved-progress restart,
+definite notification failure/recovery, and uncertain-send suppression passed.
+
+The configured OpenAI model completed 14 frozen synthetic assessments and four
+independent reviewer probes with no provider errors. The **strict scorer passed
+8/14**. Shortlist precision/recall were 1.0 within this small set, with zero false
+shortlists and zero missed suitable cases. These figures are not real-market recall.
+Four failures were exact-string mismatches: the model said forms such as “Unknown;
+no authorization or sponsorship information stated” where the rubric requires the
+literal “unknown”. The remaining two concerned closed-listing title/category handling
+and a company announcement returned as a signal rather than a watchlist finding.
+The original report is retained unchanged; labels were not revised after the run.
+
+The reviewer rejected both proposed matches containing explicit German/seniority
+blockers and returned manual_review for the two proposals with unknown authorization.
+This is four probes, not a calibrated reviewer accuracy result. Before calling the
+product fully accepted, define the representation of unknowns, closed/rejected jobs
+and signal-only responses, then freeze a separate labelled real-source/held-out set.
+Do not tune to these examples and report a rescore as new held-out performance.
+No two-worker benchmark is authorized by this acceptance run.

@@ -14,6 +14,17 @@ class R2 {
 function env(){return {STATE:new R2(),APP_TOKEN:'test-only'}}
 const req=(path,method='GET',body,token='test-only')=>new Request('https://jobs.example'+path,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
 test('private data requires authentication',async()=>{assert.equal((await worker.fetch(req('/api/catalog','GET',null,'wrong'),env())).status,401)});
+test('cold evidence archives are private, immutable and idempotent',async()=>{
+ const e=env(),id='d'.repeat(32),data='synthetic archive';
+ const upload=body=>new Request('https://jobs.example/api/run-archive/'+id,{method:'PUT',headers:{Authorization:'Bearer test-only','Content-Length':String(body.length)},body});
+ assert.equal((await worker.fetch(req('/api/run-archives','GET',null,'wrong'),e)).status,401);
+ const receipt=await (await worker.fetch(upload(data),e)).json();
+ assert.equal(receipt.id,id);assert.equal(receipt.sha256.length,64);
+ assert.equal((await worker.fetch(upload(data),e)).status,200);
+ assert.equal((await worker.fetch(upload('different bytes'),e)).status,409);
+ assert.equal(await (await worker.fetch(req('/api/run-archive/'+id),e)).text(),data);
+ assert.equal((await (await worker.fetch(req('/api/run-archives'),e)).json()).archives.length,1);
+});
 test('health diagnostics are private and marked stale when state changes',async()=>{
  const e=env();assert.equal((await worker.fetch(req('/api/health','GET',null,'wrong'),e)).status,401);
  assert.deepEqual(await (await worker.fetch(req('/api/health'),e)).json(),{status:'not_checked',stale:true});
