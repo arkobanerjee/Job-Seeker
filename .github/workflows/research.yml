@@ -1,5 +1,8 @@
 name: Private job research
 on:
+  schedule:
+    - cron: '17 9 * * *'
+      timezone: Europe/Berlin
   workflow_dispatch:
     inputs:
       mode:
@@ -12,7 +15,7 @@ on:
         description: 'Optional saved run ID to resume'
         required: false
         type: string
-# Enable a schedule only after cloud acceptance and budget review.
+# Scheduled runs also require monitoring.schedule_enabled in private cloud settings.
 permissions:
   contents: read
 concurrency:
@@ -39,11 +42,14 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           JOB_SEEKER_URL: ${{ secrets.JOB_SEEKER_URL }}
           JOB_SEEKER_APP_TOKEN: ${{ secrets.JOB_SEEKER_APP_TOKEN }}
+          RESEARCH_EVENT: ${{ github.event_name }}
           RESEARCH_MODE: ${{ inputs.mode }}
           RESUME_RUN_ID: ${{ inputs.run_id }}
         shell: bash
         run: |
-          if [ -n "$RESUME_RUN_ID" ]; then
+          if [ "$RESEARCH_EVENT" = "schedule" ]; then
+            python -m job_seeker.cloud scheduled
+          elif [ -n "$RESUME_RUN_ID" ]; then
             python -m job_seeker.cloud run --run-id "$RESUME_RUN_ID"
           elif [ "$RESEARCH_MODE" = "monitor" ]; then
             python -m job_seeker.cloud monitor

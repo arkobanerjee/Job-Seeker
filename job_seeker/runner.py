@@ -100,7 +100,7 @@ def run(config=None,resume=None,on_checkpoint=None):
     with single_worker(ROOT/"runs"):
         folder,result=_run(config,resume,on_checkpoint)
         settings=Settings.model_validate(json.loads((folder/"checkpoint.json").read_text(encoding="utf-8"))["config"])
-        if settings.notifications.telegram and result["status"]!="waiting_user":
+        if settings.notifications.telegram and result["status"]!="waiting_user" and (not result.get("scheduled") or result.get("error_type") or any(f.get("opportunity_change") in ("new","changed") for f in result["findings"])):
             try:
                 from .telegram import notify
                 notify(result)
@@ -124,9 +124,10 @@ def _run(config,resume,on_checkpoint=None):
     else:
         settings,base=load_settings(config); prompt=render_prompt(settings,base)
         if os.getenv("JOB_SEEKER_MONITORING")=="true": settings.monitoring.enabled=True
+        if os.getenv("JOB_SEEKER_SCHEDULED")=="true": settings.limits.run_usd=min(settings.limits.run_usd,settings.monitoring.daily_run_usd)
         run_id=uuid4().hex; folder=ROOT/"runs"/run_id
         state={"run_id":run_id,"folder":str(folder),"config":settings.model_dump(),"fingerprint":fingerprint(settings,prompt),
-               "cloud_envelope":os.getenv("GITHUB_ACTIONS")=="true","status":"running","started_at":datetime.now(timezone.utc).isoformat(),"queries_done":[],"queue":[],
+               "scheduled":os.getenv("JOB_SEEKER_SCHEDULED")=="true","cloud_envelope":os.getenv("GITHUB_ACTIONS")=="true","status":"running","started_at":datetime.now(timezone.utc).isoformat(),"queries_done":[],"queue":[],
                "pages_done":[],"findings":[],"rejected_findings":[],"limitations":[],"model_calls":0,"usage":[],
                "searches":0,"fetches":0,"sources":{},"events":[],"allowed":[],"cache":{}}
     for key in ("OPENAI_API_KEY" if settings.model.provider=="openai" else "ANTHROPIC_API_KEY","TAVILY_API_KEY"):
@@ -277,6 +278,7 @@ def _run(config,resume,on_checkpoint=None):
         persist()
     unique={(f["url"],f["title"]):f for f in state["findings"]}
     result={k:state[k] for k in ("run_id","status","started_at","rejected_findings","usage","fingerprint")}
+    result["scheduled"]=state.get("scheduled",False)
     result.update(findings=list(unique.values()),limitations=list(dict.fromkeys(state["limitations"])),
                   provider=settings.model.provider,model=settings.model.name,budget=ledger.summary(),finished_at=datetime.now(timezone.utc).isoformat())
     if state.get("error_type"): result["error_type"]=state["error_type"]

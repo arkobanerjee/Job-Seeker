@@ -55,6 +55,8 @@ class Notifications(Strict):
     telegram: bool = False
 
 class Monitoring(Strict):
+    schedule_enabled: bool = False
+    daily_run_usd: float = Field(default=0.25, gt=0, le=2, allow_inf_nan=False)
     enabled: bool = False
     max_sources: int = Field(default=12, ge=1, le=40)
 

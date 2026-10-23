@@ -152,8 +152,8 @@ Assessments are reused only when source input, links, policy, profile, prompt, m
 settings, schema and search track match. Changed input gets assessed again. Failed
 fetches remain unavailable, not closed. Cached findings retain human decisions.
 
-Set monitoring.enabled=true in config.toml for local monitoring. No recurring schedule
-is enabled yet. First checks may require fresh assessments because older runs did not
+Set monitoring.enabled=true in config.toml for local monitoring. Daily scheduling is available but requires monitoring.schedule_enabled=true
+in private cloud settings. First checks may require fresh assessments because older runs did not
 cache them. Cloud still reserves the configured whole-run ceiling, even if a check
 ultimately needs no model calls; a zero-cost repeat is not guaranteed.
 
@@ -169,3 +169,20 @@ Unsupported sources continue through ordinary public-page retrieval.
 
 References: https://docs.greenhouse.io/job-board.html and
 https://github.com/lever/postings-api . No application-submission endpoints are used.
+
+## Daily monitoring and notifications
+
+The shared serialized workflow runs at 09:17 Europe/Berlin. GitHub may delay scheduled
+runs. Set monitoring.schedule_enabled=true in private cloud config to opt in; the
+default is false. monitoring.daily_run_usd defaults to $0.25 and cannot raise the
+normal per-run ceiling. The existing cumulative $5 review gate remains unchanged.
+Checks skip without spending if disabled, waiting for a user, or short of budget.
+Daily claims prevent duplicate scheduled runs; an interrupted claim is not retried
+automatically the same day. Last completion/skip reason is visible in the dashboard.
+
+Scheduled completion notifications include new or materially changed opportunities
+only. Unchanged findings are quiet; required questions and run errors still notify.
+Material fields include role, fit, language, eligibility, concerns and evidence.
+This is conservative field comparison rather than a semantic change classifier.
+Manual runs retain their completion summaries. Notification delivery retry remains
+a separate outstanding reliability task. No automatic budget reset or increase occurs.

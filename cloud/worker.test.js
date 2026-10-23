@@ -74,3 +74,12 @@ test('monitor button dispatches a bounded monitor workflow mode',async()=>{
   assert.equal((await worker.fetch(req('/api/run','POST',{mode:'unlimited'}),e)).status,400);
  }finally{globalThis.fetch=original}
 });
+
+test('daily claims are idempotent and monitor status stays private',async()=>{
+ const e=env();
+ const results=await Promise.all([1,2].map(()=>worker.fetch(req('/api/schedule-claim','POST',{date:'2026-10-23'}),e).then(r=>r.json())));
+ assert.equal(results.filter(x=>x.claimed).length,1);
+ assert.equal((await worker.fetch(req('/api/monitor-status','GET',null,'wrong'),e)).status,401);
+ await worker.fetch(req('/api/monitor-status','PUT',{status:'skipped',reason:'budget_review_required'}),e);
+ assert.equal((await (await worker.fetch(req('/api/monitor-status'),e)).json()).reason,'budget_review_required');
+});

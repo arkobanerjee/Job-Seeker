@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/structured-ats-collectors'
+BRANCH='codex/daily-monitoring-alerts'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -34,9 +34,9 @@ def main():
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds bounded public Greenhouse and Lever collectors, including Lever EU. Recognized hosted URLs map to documented GET endpoints; individual postings retain original listing URLs, provider job IDs and API evidence URLs. Board indexes supply up to 30 same-tenant vacancy links without an LLM call. Response size, source policy, public-network checks and page limits remain enforced.\n\nValidation: 39 Python tests and 8 Node tests pass, including collector/runner integration, tenant restrictions, job-ID mismatch, policy denial and API provenance. One saved Lever source was checked via HTTP but remained unavailable; live structured retrieval is therefore not yet verified. No paid search or model calls were made.\n\nThis is bounded collection, not a complete vacancy census. Unsupported ATS sources use ordinary retrieval; absence from a sample never establishes closure.')
+        body=('Adds a daily 09:17 Europe/Berlin monitoring trigger with an explicit private-config enable switch, $0.25 default reservation cap, once-per-day claim and no-spend skips for disabled schedules, pending questions or insufficient budget. The existing $5 cumulative gate remains unchanged. Dashboard status records completion and skip reasons.\n\nScheduled Telegram summaries report new or materially changed opportunities; unchanged results stay quiet. Manual completion notices and required questions remain supported.\n\nValidation: 43 Python tests and 9 Node tests pass, covering budget limits, disabled schedules, field-level change detection, daily claim concurrency and authenticated status. No paid calls or production deployment performed. Live schedule activation and acceptance remain pending; defaults keep research disabled until activation. Notification retry is still future work.')
         pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Collect public Greenhouse and Lever vacancies through structured APIs','body':body})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Schedule bounded daily monitoring and notify on opportunity changes','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':
