@@ -156,3 +156,16 @@ Set monitoring.enabled=true in config.toml for local monitoring. No recurring sc
 is enabled yet. First checks may require fresh assessments because older runs did not
 cache them. Cloud still reserves the configured whole-run ceiling, even if a check
 ultimately needs no model calls; a zero-cost repeat is not guaranteed.
+
+## Structured ATS retrieval
+
+Recognized Greenhouse and Lever hosted boards/postings use their documented public
+GET endpoints, including Lever EU. Collection retains the original listing URL and
+API evidence URL. Board indexes expose at most 30 same-tenant posting links without
+an LLM call; individual postings follow the normal evidence/fit assessment. Boards
+are bounded samples, not full inventories: absent jobs do not establish closure.
+Public network checks, endpoint robots policy, response size and page limits apply.
+Unsupported sources continue through ordinary public-page retrieval.
+
+References: https://docs.greenhouse.io/job-board.html and
+https://github.com/lever/postings-api . No application-submission endpoints are used.

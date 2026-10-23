@@ -199,6 +199,10 @@ def _run(config,resume,on_checkpoint=None):
                 enqueue(page["redirect"],item["track"],True)
             if page.get("http_status")!=200:
                 state["pages_done"].append(url); persist(); continue
+            if page.get("structured_index"):
+                for link in page.get("links",[]): enqueue(link,item["track"])
+                sources.events.append({"type":"ats_index","url":url,"api_url":page.get("api_url"),"count":len(page.get("links",[]))})
+                state["pages_done"].append(url); persist(); continue
             answer_context=""
             pending=state.get("question_id")
             if pending:
@@ -234,6 +238,9 @@ def _run(config,resume,on_checkpoint=None):
             good,bad=validate_findings(Report(findings=assessment.findings,limitations=assessment.limitations),sources.records)
             evidence=[q for q in assessment.rejection_evidence if len(q)>=15 and " ".join(q.split()).casefold() in " ".join(page["text"].split()).casefold()]
             for f in good:
+                f["collection_method"]=page.get("ats_provider") or "public_page"
+                f["api_url"]=page.get("api_url")
+                f["ats_job_id"]=page.get("ats_job_id")
                 f["discovery_method"]="saved_source_monitor" if settings.monitoring.enabled else "web_search"
                 f["assessment_reused"]=bool(cached)
                 f["discovery_trails"]=discovery_trails(f["url"],sources.cache,sources.records,state["run_id"])

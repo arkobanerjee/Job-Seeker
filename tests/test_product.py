@@ -101,6 +101,21 @@ class ProductTests(unittest.TestCase):
                 (root/'private/profile.md').write_text('Changed candidate profile')
                 run(root/'config.toml');self.assertEqual(len(calls),2)
 
+    def test_structured_index_follows_links_without_model_assessment(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);setup(root);index='https://jobs.lever.co/example';calls=[]
+            def search(source,query):
+                source.allowed.add(index);source.cache[query]=[{'url':index}];return source.cache[query]
+            def fetch(source,url):
+                source.fetches+=1
+                record={'url':url,'source_id':'known','http_status':200,'text':QUOTE,'observed_at':'today','links':[]}
+                if url==index:record.update(source_id='index',structured_index=True,links=[URL],api_url='https://api.lever.co/v0/postings/example')
+                source.records[url]=record;source.allowed.update(record['links']);return record
+            def model(config,prompt,ledger,state):
+                calls.append(prompt);return Assessment(findings=[finding(source_id='known')])
+            with patch('job_seeker.runner.ROOT',root),patch.dict('os.environ',{'OPENAI_API_KEY':'fake','TAVILY_API_KEY':'fake'}),patch.object(SourceTools,'search',search),patch.object(SourceTools,'fetch',fetch),patch('job_seeker.runner.invoke_model',side_effect=model):
+                _,result=run(root/'config.toml');self.assertEqual(result['status'],'completed');self.assertEqual(len(calls),1)
+
     def test_worker_lock(self):
         with tempfile.TemporaryDirectory() as tmp:
             with single_worker(Path(tmp)):
