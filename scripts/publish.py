@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/dashboard-run-controls'
+BRANCH='codex/public-company-signals'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -34,9 +34,9 @@ def main():
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds authenticated run history, pending questions, dashboard answer-and-continue, and safe continuation controls for interrupted cloud runs. Summaries expose progress and usage estimates without prompts or raw page text. Answers validate the stored revision and cannot replace an accepted answer.\n\nWeekend scheduling is disabled on main as requested; this change also adds a runtime weekend guard. Multi-worker experiments remain deferred until the single-worker product is finished.\n\nValidation: 44 Python tests and 11 Node tests pass, covering history privacy, stale/conflicting answers, authentication and safe continuation. Dashboard script syntax checked. No paid search or model calls were made. Live dashboard acceptance remains pending after merge; the wider product is still incomplete.')
+        body=('Adds bounded public company, hiring-announcement, technology, product and organizational-change research. Configured signal queries rotate through slots within the existing search allowance, preserving vacancy discovery. Signals require a matching retrieved source ID, verbatim quote and company text; unsupported event dates remain unknown.\n\nCompany signals are persisted separately from vacancies and displayed in the registry and reports. The assessor can follow observed careers links to find actual roles within the same budget/page limits.\n\nValidation: 49 Python tests and 11 Node tests pass, including invented evidence rejection, date handling, query rotation, persistent leads and the full signal-to-careers-to-vacancy chain. Dashboard syntax checked. No paid search or model calls performed; live acceptance remains pending.\n\nSignals are leads, not hiring predictions. Independent corroboration, hiring-momentum analysis and competitor expansion remain unfinished; this PR does not complete the broader product.')
         pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Answer questions and inspect saved runs from the dashboard','body':body})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Discover company leads from evidence-backed public signals','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

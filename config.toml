@@ -44,3 +44,15 @@ max_sources = 12
 
 # Daily workflow runs at 09:17 Europe/Berlin, subject to these settings.
 # Enable explicitly in the private cloud config after deployment acceptance.
+
+[signals]
+# Reserves part of the existing search allowance; never adds to it.
+enabled = false
+max_queries = 2
+queries = [
+  { track = "ai", route = "technology", query = 'Germany company engineering blog RAG LLM production platform' },
+  { track = "data", route = "hiring", query = 'Germany company "data team" "hiring" English' },
+  { track = "ai", route = "company", query = 'Germany applied AI companies RAG products careers' },
+  { track = "ai", route = "product", query = 'Germany company launches AI product engineering team' },
+  { track = "data", route = "organization", query = 'Germany company expansion data engineering team announcement' },
+]

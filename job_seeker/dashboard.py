@@ -42,6 +42,8 @@ def serve(port=8765):
             content+=f'<form method=post action=/run><input type=hidden name=csrf value="{csrf}"><button>Start a bounded search</button></form><p class=meta>{escape(running["status"])}</p><p><small>Edit config.toml and prompts/master.md to tune searches. Resume and profile stay in private/.</small></p>'
             memory=registry.export()
             content+='<details><summary>Companies and source history</summary><p>Discovered sources; employer identity and official ownership are unverified. Text changes do not prove hiring growth or closure.</p>'
+            for signal in memory.get('signals',[]):
+                content+='<h3>Company signal: '+escape(signal['company'])+' — '+escape(signal['title'])+'</h3><p>Not a confirmed vacancy.</p><p>'+escape(signal['evidence_quote'])+'</p><p>'+escape(signal['url'])+'</p>'
             for company in memory['companies']:
                 content+='<h3>'+escape(company['name'])+'</h3>'
                 for url in company['sources']: content+='<p>'+escape(url)+'</p>'

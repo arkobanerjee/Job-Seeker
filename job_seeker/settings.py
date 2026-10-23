@@ -60,6 +60,14 @@ class Monitoring(Strict):
     enabled: bool = False
     max_sources: int = Field(default=12, ge=1, le=40)
 
+class SignalQuery(Query):
+    route: Literal["company","hiring","technology","product","organization"] = "company"
+
+class Signals(Strict):
+    enabled: bool = False
+    max_queries: int = Field(default=2,ge=1,le=5)
+    queries: list[SignalQuery] = Field(default_factory=list,max_length=20)
+
 class Settings(Strict):
     model: ModelSettings = Field(default_factory=ModelSettings)
     limits: Limits = Field(default_factory=Limits)
@@ -67,6 +75,7 @@ class Settings(Strict):
     search: Search
     notifications: Notifications = Field(default_factory=Notifications)
     monitoring: Monitoring = Field(default_factory=Monitoring)
+    signals: Signals = Field(default_factory=Signals)
 
 def load_settings(path=None):
     path=Path(path or ROOT/"config.toml").resolve()
