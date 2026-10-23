@@ -1,0 +1,44 @@
+name: Private job research
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Optional saved run ID to resume'
+        required: false
+        type: string
+# Enable a schedule only after cloud acceptance and budget review.
+permissions:
+  contents: read
+concurrency:
+  group: job-seeker-private-state
+  cancel-in-progress: false
+jobs:
+  research:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r requirements.lock
+      - name: Research and checkpoint to private R2
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          JOB_SEEKER_URL: ${{ secrets.JOB_SEEKER_URL }}
+          JOB_SEEKER_APP_TOKEN: ${{ secrets.JOB_SEEKER_APP_TOKEN }}
+          RESUME_RUN_ID: ${{ inputs.run_id }}
+        shell: bash
+        run: |
+          if [ -n "$RESUME_RUN_ID" ]; then
+            python -m job_seeker.cloud run --run-id "$RESUME_RUN_ID"
+          else
+            python -m job_seeker.cloud run
+          fi
+      # Never upload private profile/resume/results as public-repository artifacts.

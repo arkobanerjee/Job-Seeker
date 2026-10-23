@@ -1,2 +1,107 @@
-# Job-Seeker
-Agent to search and document jobs according to my proffile
+# Job Seeker
+
+Personal job research in Python with LangChain/LangGraph, a configurable hosted model,
+editable prompts, Markdown resume input, and a durable queue of opportunities and
+rejected roles. Research is read-only; applications are always a human decision.
+
+## Start locally
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.lock
+Copy-Item .env.example .env
+New-Item -ItemType Directory -Force private
+Copy-Item profile.example.md private/profile.md
+```
+
+Do not overwrite an existing .env or profile. Fill OPENAI_API_KEY and TAVILY_API_KEY
+in .env. Then edit private/profile.md and optionally create private/resume.md.
+
+```powershell
+.\.venv\Scripts\python.exe -m job_seeker.cli check
+.\.venv\Scripts\python.exe -m job_seeker.cli preview-prompt
+.\.venv\Scripts\python.exe -m job_seeker.cli run
+.\.venv\Scripts\python.exe -m job_seeker.cli dashboard
+```
+
+The dashboard opens at http://127.0.0.1:8765. The run command makes paid model/search
+calls. Check and prompt preview do not. The rendered prompt is saved privately to
+private/rendered-prompt.md.
+
+## What to tune
+
+| File | Purpose |
+|---|---|
+| config.toml | Provider, exact model ID, reasoning, token limits, prices, queries, budgets and prompt paths |
+| prompts/master.md | Editable search/matching instructions, with profile and resume placeholders |
+| private/profile.md | Your search preferences and confirmed background facts |
+| private/resume.md | Optional resume in Markdown; loaded automatically when present |
+
+Default model: OpenAI **gpt-5.6-luna**. Standard rates checked 2026-10-23:
+$0.20/M input and $1.20/M output. To change models, explicitly set provider, model ID
+and both correct prices. Incorrect prices invalidate spending estimates. Anthropic's
+adapter is available but not live-tested; it uses normal generation and does not apply
+the OpenAI reasoning_effort setting. No automatic fallback occurs.
+[Official Luna model reference](https://developers.openai.com/api/docs/models/gpt-5.6-luna).
+
+Defaults: six basic searches, twelve page reads, sixteen model calls, 4,000 output
+tokens/call, $2/run, and the existing $5 cumulative review gate. Increasing search
+limits does not bypass monetary limits. The remaining prototype budget is not
+automatically unlocked. Credentials stay in .env. Private files and runs are excluded
+from Git. Configuration and prompt files must not contain credentials.
+
+## How it works
+
+1. Search configured AI and data queries with balanced candidate queues.
+2. Fetch public pages under source policies; prioritize direct ATS listings and follow
+   observed vacancy links from index pages.
+3. Assess one page per small model call against the rendered background prompt.
+4. Check source/title/quote evidence. Save verified-source findings separately from
+   unverified suggestions. Keep technical matches with blockers as exclusions.
+5. Save the catalog, decision history, per-run prompt/settings and checkpoints.
+
+Each finding records company, role, URL, location, language, eligibility, evidence,
+fit, concerns and rejection reasons. Marking **apply anyway** changes your decision
+without erasing the assessment or sending an application. New observations preserve
+your decisions/notes. General job indexes are discovery sources, not hiring companies.
+
+```powershell
+python -m job_seeker.cli resume --run-id <run-id>
+python -m job_seeker.cli import-history
+```
+
+Resume uses the original run's saved settings and prompt. Completed steps are not
+repeated. An interrupted in-flight request may be charged and repeated on explicit
+resume; its earlier reservation remains. Evidence failures are retained privately in
+rejected_findings as unverified, not as confirmed job leads.
+
+Source text is untrusted data. Tools cannot log in, contact people, submit applications,
+execute code, or read arbitrary URLs. Missing language/authorization facts stay unknown.
+Evidence checks do not prove current vacancy availability or legal eligibility.
+
+## Cloud and Telegram
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the Cloudflare Worker/R2 dashboard, private
+GitHub Actions worker, secrets setup and acceptance steps. No recurring job is enabled
+until deployment and budget review. Cloud state has a 20 MB limit and one serialized
+writer. Each cloud run reserves its whole ceiling before starting, so a killed runner
+cannot reset the budget.
+
+Enable notifications.telegram only after setting TELEGRAM_BOT_TOKEN and your
+TELEGRAM_CHAT_ID. Telegram currently sends owner completion summaries. Questions/replies
+are not implemented; the cloud dashboard provides remote search and profile editing.
+
+## Verification
+
+```powershell
+python -m unittest discover -s tests -v
+node --test cloud/worker.test.js
+```
+
+Tests cover evidence, prompt ingestion, budgets, restart behavior, human decisions,
+archive boundaries, authentication and concurrent reservations. The old demo, plan,
+research and review commands remain for pilot compatibility. Use **run** for the new
+configurable runner; legacy research retains its earlier pilot defaults.
+
+Luna and Tavily passed a live smoke test. Search quality still depends on queries and
+source access. Cloud deployment needs its own acceptance run before it is production-ready.

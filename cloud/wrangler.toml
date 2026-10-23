@@ -1,0 +1,12 @@
+name = "job-seeker"
+main = "worker.js"
+compatibility_date = "2026-10-23"
+
+[[r2_buckets]]
+binding = "STATE"
+bucket_name = "job-seeker-private"
+
+[vars]
+GITHUB_REPOSITORY = "arkobanerjee/Job-Seeker"
+GITHUB_REF = "main"
+# Secrets set with wrangler secret put: APP_TOKEN, GITHUB_TOKEN

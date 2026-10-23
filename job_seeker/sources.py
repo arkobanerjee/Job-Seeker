@@ -1,0 +1,160 @@
+"""Read-only source tools. No shell, browser login, or arbitrary network destinations."""
+import http.client
+import ipaddress
+import json
+import os
+import socket
+import threading
+import re
+import hashlib
+from datetime import datetime, timezone
+from html.parser import HTMLParser
+from urllib.parse import urlsplit, urlunsplit, urljoin
+from urllib.robotparser import RobotFileParser
+
+class ServiceFailure(RuntimeError):
+    pass
+
+def normalized(url):
+    p = urlsplit(url)
+    if p.scheme != "https" or not p.hostname or p.username or p.password or p.port not in (None,443):
+        raise ValueError("Only public HTTPS URLs on port 443 are supported")
+    host = p.hostname.encode("idna").decode().lower().rstrip(".")
+    if any(host == x or host.endswith("."+x) for x in ("linkedin.com", "localhost", "local", "internal")):
+        raise ValueError("Unsupported source")
+    return urlunsplit(("https",host,p.path or "/",p.query,""))
+
+def public_addresses(host):
+    addresses = list(dict.fromkeys(x[4][0] for x in socket.getaddrinfo(host,443,type=socket.SOCK_STREAM)))
+    if not addresses or any(not ipaddress.ip_address(a).is_global for a in addresses):
+        raise ValueError("Non-public address blocked")
+    return addresses
+
+def public_get(url):
+    """Pin connection to a validated IP while retaining TLS hostname validation."""
+    for _ in range(4):
+        url = normalized(url)
+        p = urlsplit(url)
+        addr = public_addresses(p.hostname)[0]
+        conn = http.client.HTTPSConnection(p.hostname, timeout=15)
+        conn._create_connection = lambda address, timeout=None, source_address=None: socket.create_connection((addr,443), timeout, source_address)
+        try:
+            conn.request("GET", (p.path or "/") + ("?"+p.query if p.query else ""),
+                         headers={"User-Agent":"JobSeekerPrototype/0.1", "Accept":"text/html,text/plain", "Accept-Encoding":"identity"})
+            r = conn.getresponse()
+            if r.status in (301,302,303,307,308):
+                url = urljoin(url,r.getheader("Location") or "")
+                continue
+            content_type = r.getheader("Content-Type", "")
+            if r.status != 200:
+                return url,r.status,""
+            if not any(x in content_type for x in ("text/html","text/plain")):
+                raise ValueError("Unsupported content type")
+            data = r.read(500_001)
+            if len(data) > 500_000:
+                raise ValueError("Page exceeds prototype size limit")
+            return url,r.status,data.decode("utf-8",errors="replace")
+        finally:
+            conn.close()
+    raise ValueError("Redirect limit reached")
+
+class PageText(HTMLParser):
+    def __init__(self):
+        super().__init__(); self.parts=[]; self.hrefs=[]; self.skip=0
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script","style","noscript","svg"):
+            self.skip += 1
+        if tag == "a" and not self.skip:
+            self.hrefs.extend(v for k,v in attrs if k == "href" and v)
+    def handle_endtag(self, tag):
+        if tag in ("script","style","noscript","svg"):
+            self.skip=max(0,self.skip-1)
+    def handle_data(self,data):
+        if not self.skip: self.parts.append(data)
+
+class SourceTools:
+    def __init__(self, ledger, persist, max_searches=4, max_fetches=10):
+        self.ledger=ledger; self.persist=persist
+        self.searches=0; self.fetches=0; self.max_searches=max_searches; self.max_fetches=max_fetches
+        self.records={}; self.allowed=set(); self.events=[]; self.cache={}; self.robots={}
+        self.lock=threading.RLock()
+
+    def search(self, query):
+        import httpx
+        if not query.strip() or len(query)>350:
+            return {"error":"Query must contain 1–350 characters"}
+        if any("." not in domain or "/" in domain for domain in re.findall(r"site:([^\s)]+)",query)):
+            return {"error":"A site: filter must name an actual domain, e.g. site:jobs.lever.co. Do not invent domains or use site:companies."}
+        with self.lock:
+            if query in self.cache: return self.cache[query]
+            if self.searches>=self.max_searches: return {"error":"Search limit reached; use available evidence or finish"}
+            self.searches+=1
+            reservation=self.ledger.reserve("tavily_basic",0.008)
+            self.persist()
+        try:
+            with httpx.Client(timeout=35,trust_env=False) as client:
+                r=client.post("https://api.tavily.com/search",
+                    headers={"Authorization":"Bearer "+os.environ["TAVILY_API_KEY"]},
+                    json={"query":query,"search_depth":"basic","max_results":5,
+                          "include_answer":False,"include_raw_content":False,
+                          "exclude_domains":["linkedin.com"],"auto_parameters":False,"include_usage":True})
+                if r.status_code!=200: raise ServiceFailure("Tavily HTTP "+str(r.status_code))
+                data=r.json()
+            self.ledger.observe(reservation,0.008)
+        except ServiceFailure: raise
+        except Exception:
+            raise ServiceFailure("Tavily request failed; inspect connection/configuration before retrying") from None
+        with self.lock:
+            results=[]
+            for item in data.get("results",[]):
+                try: url=normalized(item["url"])
+                except (ValueError,KeyError): continue
+                self.allowed.add(url)
+                results.append({"url":url,"title":str(item.get("title",""))[:250],"snippet":str(item.get("content",""))[:1500]})
+            self.events.append({"type":"search","query":query,"count":len(results)})
+            self.cache[query]=results; self.persist()
+            return results
+
+    def fetch(self,url):
+        try: url=normalized(url)
+        except ValueError: return {"error":"Unsupported URL"}
+        with self.lock:
+            if url in self.records: return self.records[url]
+            if url not in self.allowed: return {"error":"URL must come from search or an observed page link"}
+            if self.fetches>=self.max_fetches: return {"error":"Source-fetch limit reached"}
+            self.fetches+=1
+            self.persist()
+        try:
+            p=urlsplit(url); origin=f"https://{p.netloc}"
+            with self.lock:
+                if origin not in self.robots:
+                    _,status,text=public_get(origin+"/robots.txt")
+                    if status not in (200,404):
+                        raise ValueError("Could not establish robots permission")
+                    robot=RobotFileParser(); robot.parse(text.splitlines() if status==200 else [])
+                    self.robots[origin]=robot
+                if not self.robots[origin].can_fetch("JobSeekerPrototype",url):
+                    raise ValueError("Source disallows automated retrieval")
+            final,status,html=public_get(url)
+            if urlsplit(final).netloc!=p.netloc:
+                # Recheck the new origin's robots policy via a new tool call.
+                self.allowed.add(final)
+                return {"redirect":final,"note":"Fetch this destination separately to check its policy"}
+            parser=PageText(); parser.feed(html)
+            text=" ".join(" ".join(parser.parts).split())[:18000]
+            links=[]
+            for href in parser.hrefs:
+                try: link=normalized(urljoin(final,href))
+                except ValueError: continue
+                if link not in links and len(links)<30: links.append(link)
+            closed=any(x in text.lower() for x in ("this job is no longer available","this position has been filled","job not found","this job has expired","the vacancy is closed","expired job"))
+            record={"url":url,"final_url":final,"http_status":status,"text":text,
+                    "source_id":hashlib.sha256(url.encode()).hexdigest()[:16],
+                    "observed_at":datetime.now(timezone.utc).isoformat(),"closed_marker":closed,"links":links}
+        except (ValueError,OSError,http.client.HTTPException):
+            record={"url":url,"error":"Retrieval unavailable, blocked by policy, too large, or unsupported; no closure inference"}
+        with self.lock:
+            self.allowed.update(record.get("links",[])); self.records[url]=record
+            self.events.append({"type":"fetch","url":url,"ok":record.get("http_status")==200})
+            self.persist()
+        return record
