@@ -292,3 +292,11 @@ settings, controls, answers and decisions are never rolled back. A current valid
 spending ledger is required; restore cannot repair a missing/corrupt financial ledger.
 Checksums are corruption checks; backups in the same account are not an independent
 off-account disaster-recovery copy. Live restore drills remain part of acceptance.
+
+
+Storage health is available from the private dashboard. A no-research diagnostic
+checks archive capacity and SQLite integrity; stale reports are marked. Research
+preflight blocks at 90% capacity before paid reservations. This is an early warning
+and stop, not automatic active-history compaction. See DEPLOYMENT.md for recovery
+and the frozen 14-case quality evaluation workflow. Preparing/scoring evaluation
+files costs nothing; it does not mean a live model has passed those examples.

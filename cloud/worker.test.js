@@ -14,6 +14,17 @@ class R2 {
 function env(){return {STATE:new R2(),APP_TOKEN:'test-only'}}
 const req=(path,method='GET',body,token='test-only')=>new Request('https://jobs.example'+path,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
 test('private data requires authentication',async()=>{assert.equal((await worker.fetch(req('/api/catalog','GET',null,'wrong'),env())).status,401)});
+test('health diagnostics are private and marked stale when state changes',async()=>{
+ const e=env();assert.equal((await worker.fetch(req('/api/health','GET',null,'wrong'),e)).status,401);
+ assert.deepEqual(await (await worker.fetch(req('/api/health'),e)).json(),{status:'not_checked',stale:true});
+ const state=await e.STATE.put('state/latest.zip','archive');
+ const report={status:'ok',checks:[],archive_bytes:7,expanded_bytes:10,files:1,state_etag:'"'+state.etag+'"'};
+ assert.equal((await worker.fetch(req('/api/health','PUT',report),e)).status,200);
+ assert.equal((await (await worker.fetch(req('/api/health'),e)).json()).stale,false);
+ await e.STATE.put('state/latest.zip','new');
+ assert.equal((await (await worker.fetch(req('/api/health'),e)).json()).stale,true);
+ assert.equal((await worker.fetch(req('/api/health','PUT',{...report,files:-1}),e)).status,400);
+});
 test('budget cannot reset, double reserve, or exceed gate',async()=>{
   const e=env();assert.equal((await worker.fetch(req('/api/initialize','POST',{already_reserved:1.15}),e)).status,200);
   assert.equal((await worker.fetch(req('/api/initialize','POST',{already_reserved:0}),e)).status,409);

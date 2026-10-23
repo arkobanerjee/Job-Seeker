@@ -17,6 +17,16 @@ export default {
       const backupResponse=await backupApi(request,env,u.pathname);if(backupResponse)return backupResponse;
       const questionResponse=await questionApi(request,env,u.pathname);
       if(questionResponse)return questionResponse;
+      if(u.pathname==='/api/health' && request.method==='GET') {
+        const object=await env.STATE.get('health.json');if(!object)return reply({status:'not_checked',stale:true});
+        const report=await object.json(),state=await env.STATE.get('state/latest.zip');
+        return reply({...report,stale:!state||report.state_etag!=='"'+state.etag+'"'});
+      }
+      if(u.pathname==='/api/health' && request.method==='PUT') {
+        const body=await request.json();
+        if(!['ok','warning','blocked'].includes(body.status)||!Array.isArray(body.checks)||JSON.stringify(body).length>10000||typeof body.state_etag!=='string'||!['archive_bytes','expanded_bytes','files'].every(k=>Number.isFinite(body[k])&&body[k]>=0))return reply({error:'Invalid diagnostics'},400);
+        await env.STATE.put('health.json',JSON.stringify(body));return reply({saved:true});
+      }
       if(u.pathname==='/api/monitor-status' && request.method==='GET') {
         const object=await env.STATE.get('monitor-status.json');return reply(object?await object.json():{status:'not_checked'});
       }
@@ -56,7 +66,7 @@ export default {
       if(u.pathname==='/api/run' && request.method==='POST') {
         if(!env.GITHUB_TOKEN) return reply({error:'GitHub dispatch not configured'},409);
         const body=await request.json(),mode=body.mode||'discovery';
-        if(!['discovery','monitor','notifications','backup','restore'].includes(mode))return reply({error:'Invalid research mode'},400);
+        if(!['discovery','monitor','notifications','backup','restore','diagnostics'].includes(mode))return reply({error:'Invalid research mode'},400);
         const inputs={mode};if(mode==='restore'){if(!/^[a-f0-9]{32}$/.test(body.backup_id))return reply({error:'Invalid backup ID'},400);inputs.backup_id=body.backup_id}
         const response=await fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/research.yml/dispatches`,{
           method:'POST',headers:{Authorization:`Bearer ${env.GITHUB_TOKEN}`,'User-Agent':'Job-Seeker','Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:env.GITHUB_REF,inputs})});

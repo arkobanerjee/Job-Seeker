@@ -78,15 +78,21 @@ before its result was saved can be repeated on resume; its earlier reservation r
 This is application checkpointing around LangGraph nodes, not a general agent sandbox.
 
 If a token expires, refresh that credential and rerun deployment/secrets setup without
-resetting budgets. If the cloud state reaches 20 MB, stop and archive old run evidence
-before continuing. Keep budgets and the catalog. Cloud job failures remain visible in
+resetting budgets. Storage preflight warns at 75% of the byte or file ceiling and blocks research at
+90%, before reserving paid work. Inspect Storage health on the dashboard and request
+a fresh check if it is stale. Backups retain five private snapshots but do not shrink
+the active state. There is no automatic evidence deletion or compaction yet. Stop
+and plan archival or storage migration before approaching the limit. Keep financial,
+question, delivery, catalog and registry records. A large in-flight run can still reach
+the limit; the preflight cannot predict its final size. Cloud job failures remain visible in
 GitHub; a killed process cannot reliably send a final Telegram message.
 
 ## Current boundaries
 
 - Text-only public research; no login/browser/code tools, outreach or auto-applications.
-- Telegram sends owner-only completion summaries; conversational questions/replies and
-  webhook commands are not implemented. The dashboard supplies remote control/editing.
+- Telegram delivers owner-only questions and summaries. Reply to a question normally;
+  standalone text is accepted only when exactly one question is pending. The dashboard
+  also supports answers and continuation, and pause/cancel take effect at tool boundaries.
 - OpenAI Luna passed a live smoke test. Other configured models/providers require their
   correct prices and a small acceptance test; there is no automatic fallback.
 - External source facts and model fit judgements still require review. Search coverage
@@ -98,3 +104,62 @@ References: [Cloudflare upload metadata](https://developers.cloudflare.com/worke
 [R2 conditional writes](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/),
 [GitHub secret encryption](https://docs.github.com/en/rest/actions/secrets),
 [GPT 5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna).
+
+
+## Storage checks and recovery rehearsal
+
+The dashboard's **Check storage health** queues a serialized, no-research workflow.
+It validates the allowlisted ZIP, reports compressed/expanded bytes and file counts,
+and runs SQLite quick_check on current databases. An absent budget ledger blocks
+research. Other databases may be absent before their first use. Integrity checks do
+not prove business-level consistency or recover a damaged database.
+
+Reports refer to one snapshot version. The dashboard labels them stale when state
+changes; refresh the check before relying on it. A failed workflow may leave an old
+report, so inspect its timestamp and GitHub result. No model or search calls are made.
+
+Use **Create private backup** and verify its appearance in Private backups. Download
+and validate a copy for an isolated rehearsal before a real restore. A restore is
+queued through the serialized workflow, creates a pre-restore backup and preserves
+current financial records, delivery receipts, questions and preferences. It rejects
+concurrent state replacement. Restoring research is still an intentional rollback;
+it does not recreate new research that was absent from the chosen snapshot. The
+bucket is private; no public GitHub artifacts hold these files. Same-account copies
+do not protect against account loss. Keep an independently secured copy if needed.
+
+## Frozen quality evaluation
+
+The repository includes 14 **synthetic, manually labelled** examples in
+`tests/fixtures/quality_cases.json`. They cover positive AI/data roles, mandatory vs
+preferred German, seniority, unstated authorization, explicit location/citizenship
+restrictions, closed listings, company announcements, aggregate indexes, prompt
+injection and overlapping experience. These are regression examples, not a measured
+sample of the labour market or an immigration assessment.
+
+Prepare inputs with labels removed:
+
+```
+python -m job_seeker.evaluation prepare --output private/evaluation-inputs.json
+```
+
+Collect independent Assessment objects in a JSON mapping from case ID to output.
+Use the configured master prompt and profile when producing those assessments; keep
+reference labels out of the model context. Store results privately. This preparation
+and scoring tool never invokes a model or spends credits. Live model generation must
+use the existing bounded worker accounting; do not start an unmetered benchmark.
+
+Score saved outputs:
+
+```
+python -m job_seeker.evaluation score --predictions private/evaluation-predictions.json --output private/evaluation-report.json
+```
+
+The scorer applies production title/quote/closed-page checks and index filtering,
+then reports per-case errors, shortlist precision/recall, false shortlists and misses.
+It also checks designated unknown fields and rejection explanations. Missing outputs
+fail and count as missed relevant roles; a zero-shortlist precision is reported as
+unavailable rather than perfect. Any failing example returns a nonzero exit status.
+Scorer unit tests use explicitly authored outputs and do not establish model accuracy.
+This evaluates extraction decisions, not independent reviewer quality, search recall,
+source freshness over time or live availability. Add independently labelled real
+examples privately before a release decision, and hold some out when tuning prompts.

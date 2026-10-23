@@ -99,7 +99,7 @@ def run_cloud(resume=None,monitor=False,scheduled=False):
     if os.getenv('GITHUB_ACTIONS')!='true': raise ValueError('Cloud worker runs through the serialized GitHub Actions workflow')
     if not resume: os.environ['JOB_SEEKER_SCHEDULED']='true' if scheduled else 'false'
     if not resume: os.environ['JOB_SEEKER_MONITORING']='true' if monitor else 'false'
-    cloud=Cloud(); initial=cloud.request('state'); unpack(initial)
+    cloud=Cloud(); initial,initial_etag=cloud.request('state',return_etag=True); unpack(initial)
     for name,content in cloud.request('settings').items():
         if name not in ('config.toml','prompts/master.md','private/profile.md','private/resume.md') or not isinstance(content,str): raise ValueError('Unexpected cloud settings')
         target=ROOT/name; target.parent.mkdir(exist_ok=True,parents=True); target.write_text(content,encoding='utf-8')
@@ -121,6 +121,11 @@ def run_cloud(resume=None,monitor=False,scheduled=False):
         claim=cloud.request('schedule-claim','POST',{'date':date})
         if not claim.get('claimed'): return None,{'status':'skipped','reason':'already_checked_today','findings':[]}
         settings.limits.run_usd=min(settings.limits.run_usd,settings.monitoring.daily_run_usd)
+    from .health import inspect_snapshot
+    health=inspect_snapshot(initial)
+    health['state_etag']=initial_etag or ''
+    cloud.request('health','PUT',health)
+    if health['status']=='blocked':raise ValueError('Private state health check blocked research; inspect storage diagnostics before retrying')
     backup_cloud(cloud,initial)
     # Reserve the entire run ceiling before any paid action. A killed runner cannot
     # reset global accounting by losing its last snapshot. No automatic refunds.
@@ -186,9 +191,13 @@ def retry_notifications():
 
 def main():
     import argparse
-    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','scheduled','notifications','backup','restore','settings']); parser.add_argument('--run-id'); parser.add_argument('--backup-id')
+    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','scheduled','notifications','backup','restore','diagnostics','settings']); parser.add_argument('--run-id'); parser.add_argument('--backup-id')
     args=parser.parse_args()
-    if args.command=='backup': print('Private backup created: '+backup_cloud()['id'])
+    if args.command=='diagnostics':
+        from .health import diagnose_cloud
+        report=diagnose_cloud(Cloud());print(json.dumps(report))
+        if report['status']=='blocked':raise SystemExit(1)
+    elif args.command=='backup': print('Private backup created: '+backup_cloud()['id'])
     elif args.command=='restore': restore_cloud(args.backup_id); print('Research restored; current spending ledger and settings retained')
     elif args.command=='notifications': retry_notifications(); print('Notification recovery attempted; no research rerun')
     elif args.command=='bootstrap': bootstrap(); print('Private cloud state initialized')

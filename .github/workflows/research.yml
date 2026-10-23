@@ -10,7 +10,7 @@ on:
         required: false
         default: discovery
         type: choice
-        options: [discovery, monitor, notifications, backup, restore]
+        options: [discovery, monitor, notifications, backup, restore, diagnostics]
       backup_id:
         description: Retained backup ID for explicit research restore
         required: false
@@ -57,6 +57,8 @@ jobs:
             python -m job_seeker.cloud scheduled
           elif [ -n "$RESUME_RUN_ID" ]; then
             python -m job_seeker.cloud run --run-id "$RESUME_RUN_ID"
+          elif [ "$RESEARCH_MODE" = "diagnostics" ]; then
+            python -m job_seeker.cloud diagnostics
           elif [ "$RESEARCH_MODE" = "backup" ]; then
             python -m job_seeker.cloud backup
           elif [ "$RESEARCH_MODE" = "restore" ]; then
