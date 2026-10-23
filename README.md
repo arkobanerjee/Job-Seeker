@@ -315,3 +315,11 @@ closed roles as excluded reference records, and accepts validated signal-only co
 announcements. A separate six-case frozen real-source check passed 6/6; its small,
 selected sample is not a measure of market coverage. The original synthetic 8/14
 result is preserved. See DEPLOYMENT.md for reviewer outcomes and benchmark limits.
+
+
+Weekday monitoring now supports a separate bounded public ATS-count check with no
+model or paid web-search calls. Real observations on different dates are required
+before showing board activity; incompatible collection scopes reset the baseline.
+The manual dashboard control uses the same serialized worker. Optional competitor
+and corroboration probes passed focused real-source checks, with publisher
+independence explicitly unverified. See DEPLOYMENT.md for limits and configuration.

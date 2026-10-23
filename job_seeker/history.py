@@ -11,7 +11,7 @@ def run_history(root):
             'finished_at':result.get('finished_at'),'findings':len(state.get('findings',[])),
             'searches':state.get('searches',0),'pages':state.get('fetches',0),'model_calls':state.get('model_calls',0),
             'error_type':state.get('error_type'),'notification_error':result.get('notification_error'),
-            'mode':'monitor' if state.get('config',{}).get('monitoring',{}).get('enabled') else 'discovery',
+            'mode':state.get('mode') or ('monitor' if state.get('config',{}).get('monitoring',{}).get('enabled') else 'discovery'),
             'scheduled':state.get('scheduled',False),'can_resume':bool(state.get('cloud_envelope')) and state['status'] in ('partial','failed','paused'),
             'observed_estimate_usd':result.get('budget',{}).get('observed_estimate_usd'),
             'limitations':state.get('limitations',[])})

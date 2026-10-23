@@ -60,7 +60,7 @@ class Registry:
                 try: info=source_info(raw)
                 except ValueError: continue
                 if record.get('structured_index') and isinstance(record.get('returned_count'),int):
-                    metrics={k:record.get(k) for k in ('observed_at','ats_provider','ats_tenant','returned_count','reported_total')}
+                    metrics={k:record.get(k) for k in ('observed_at','ats_provider','ats_tenant','api_url','sample_limit','collection_scope','returned_count','reported_total')}
                     db.execute('INSERT OR IGNORE INTO board_counts VALUES(?,?,?)',(info['url'],run_id,json.dumps(metrics)))
                 url=info['url'];db.execute("INSERT OR IGNORE INTO sources VALUES(?,?,?)",(url,info['host'],info['ats']))
                 ok=record.get('http_status')==200
