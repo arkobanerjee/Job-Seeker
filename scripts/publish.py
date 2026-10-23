@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/corroboration-and-private-backups'
+BRANCH='codex/storage-health-and-quality-evaluation'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -30,13 +30,13 @@ def main():
         parent=head.json()['object']['sha'] if exists else api('GET','/git/ref/heads/main')['object']['sha']
         tree_base=api('GET','/git/commits/'+parent)['tree']['sha']
         tree=api('POST','/git/trees',{'base_tree':tree_base,'tree':entries})
-        commit=api('POST','/git/commits',{'message':'Add signal corroboration and private backup restore','tree':tree['sha'],'parents':[parent]})
+        commit=api('POST','/git/commits',{'message':'Add storage health preflight and frozen quality evaluation','tree':tree['sha'],'parents':[parent]})
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds bounded, independent-context comparison of company signals collected from different sources. Supporting and contradictory verdicts require quotes from both excerpts. Different hostnames alone do not establish publisher independence; configured publisher mappings distinguish known ownership. Corroboration is configurable and disabled by default, sharing existing call and spending limits.\n\nAdds authenticated private R2 backups with SHA-256 integrity metadata, five-snapshot retention, dashboard controls and serialized workflow modes. Research runs take a snapshot before work. Restore validates archives, preserves current spending records, notification receipts, questions, preferences and paused/waiting task continuity, creates a pre-restore backup and uses a state version check to reject concurrent changes. This does not remove the active archive size limit or replace an off-account backup.\n\nValidation: 73 Python tests and 15 Node tests pass, including corroboration quote checks, an integrated mocked-provider run, backup retention, archive integrity, restore continuity and concurrent-update rejection. Dashboard script syntax checked. No paid calls or live restore were performed for this batch. Live acceptance and final release evaluation remain pending.')
-        pr=prs[0] if prs else api('POST','/pulls',{'title':'Corroborate company signals and add private backup/restore','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Corroborate company signals and add private backup/restore','body':body})
+        body=('Adds private storage diagnostics and an early research stop: allowlisted archive validation, expanded/compressed size and file-count metrics, SQLite integrity checks and a snapshot-version freshness indicator on the dashboard. Diagnostics run through the serialized workflow without paid calls; research blocks before reservations if the ledger is missing/corrupt or capacity reaches 90%. This is not automatic history compaction and cannot predict in-flight growth.\n\nAdds a frozen, manually labelled 14-case synthetic extraction evaluation. Preparation removes reference labels; scoring validates source evidence and reports per-case errors, false shortlists, misses, precision/recall and designated unknown-field violations. Missing predictions fail. No model calls are made by this tool, and scorer regression tests do not establish model quality. Operator documentation now describes current Telegram, recovery and acceptance behavior.\n\nValidation: 81 Python tests and 16 Node tests pass; dashboard syntax checked. Separately, merged PR14 was deployed, its backup-only workflow succeeded, a downloaded backup checksum passed, and an isolated restore rehearsal left live state unchanged. Read-only live database integrity checks passed. No paid model/search calls or actual live rollback were performed. Live quality evaluation, cloud recovery drills and active-history storage policy remain release work.')
+        pr=prs[0] if prs else api('POST','/pulls',{'title':'Add storage health checks and frozen quality evaluation','head':BRANCH,'base':'main','body':body,'draft':True})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Add storage health checks and frozen quality evaluation','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

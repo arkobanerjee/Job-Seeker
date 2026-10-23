@@ -28,9 +28,9 @@ class MonitoringPolicyTests(unittest.TestCase):
         from job_seeker.cloud import run_cloud
         settings=Settings(search={'queries':[{'track':'ai','query':'AI roles'}]});calls=[]
         class FakeCloud:
-            def request(self,path,method='GET',body=None):
+            def request(self,path,method='GET',body=None,**kwargs):
                 calls.append(path)
-                if path=='state':return b''
+                if path=='state':return b'','"test"'
                 if path=='settings':return {}
                 if path=='monitor-status':return {'saved':True}
                 raise AssertionError('Unexpected API call '+path)
