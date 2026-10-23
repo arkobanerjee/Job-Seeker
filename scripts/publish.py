@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/company-opportunities-and-activity'
+BRANCH='codex/opportunity-tabs-and-coverage'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -30,13 +30,13 @@ def main():
         parent=head.json()['object']['sha'] if exists else api('GET','/git/ref/heads/main')['object']['sha']
         tree_base=api('GET','/git/commits/'+parent)['tree']['sha']
         tree=api('POST','/git/trees',{'base_tree':tree_base,'tree':entries})
-        commit=api('POST','/git/commits',{'message':'Add company opportunities and readable research activity','tree':tree['sha'],'parents':[parent]})
+        commit=api('POST','/git/commits',{'message':'Separate opportunity tabs and explain research coverage','tree':tree['sha'],'parents':[parent]})
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body='Adds a separate Company opportunities queue for sourced company signals, positive comparable board changes and competitor leads. Cards show evidence, uncertainty, suggested next steps and persistent watch/investigate/dismiss/draft decisions. An editable introduction template never sends messages. Company decisions live outside research snapshots and job decisions. No discovery flags or spending limits are enabled or raised.\n\nRun history now exposes recorded exact queries, result URLs and page outcomes, with limitations grouped separately. Historical missing details remain explicit. Adds an operating guide and records the single-worker operating choice. Includes the separate local comparison harness and offline tests; private experimental results and candidate background are excluded.\n\nValidation: 110 Python tests previously passed; 21 Node tests and dashboard syntax pass. New tests cover stable opportunity identity, momentum gating and separate decision storage. No paid calls or production data writes were needed for this feature.'
-        pr=prs[0] if prs else api('POST','/pulls',{'title':'Add company opportunities and readable research activity','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Add company opportunities and readable research activity','body':body})
+        body='Separates job openings and company opportunities into labelled dashboard tabs. The selected tab is preserved across refreshes within the session; job filters are hidden on the company view. Company rendering respects the selected tab. Adds an explicit coverage explanation: saved leads are bounded collected evidence, not an exhaustive six-month company-news search. Documents signal deduplication, momentum history and backfill scope.\n\nNo discovery settings, budgets or production data are changed. Validation: dashboard syntax and Node backend tests; tab visibility checks exercise the actual dashboard script with a minimal DOM harness.'
+        pr=prs[0] if prs else api('POST','/pulls',{'title':'Separate opportunity tabs and explain research coverage','head':BRANCH,'base':'main','body':body,'draft':True})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Separate opportunity tabs and explain research coverage','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':
