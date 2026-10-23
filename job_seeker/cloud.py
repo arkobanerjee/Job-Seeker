@@ -67,6 +67,8 @@ class Cloud:
         self.request('state','PUT',pack(),True)
         catalog=Catalog(ROOT/'runs'/'catalog.sqlite3')
         self.request('catalog','PUT',catalog.list())
+        from .history import run_history
+        self.request('runs','PUT',run_history(ROOT/'runs'))
         from .registry import Registry
         registry=Registry(ROOT/'runs/registry.sqlite3'); registry.import_runs(ROOT/'runs')
         self.request('registry','PUT',registry.export())
@@ -106,6 +108,7 @@ def run_cloud(resume=None,monitor=False,scheduled=False):
         from zoneinfo import ZoneInfo
         reason=None
         if not settings.monitoring.schedule_enabled: reason='schedule_disabled'
+        elif datetime.now(ZoneInfo('Europe/Berlin')).weekday()>=5: reason='weekend'
         elif Questions(ROOT/'runs/questions.sqlite3').pending(): reason='waiting_for_user'
         elif scheduled_cap(settings,cloud.request('budget')) is None: reason='budget_review_required'
         if reason:

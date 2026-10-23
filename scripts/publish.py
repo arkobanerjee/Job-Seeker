@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/daily-monitoring-alerts'
+BRANCH='codex/dashboard-run-controls'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -34,9 +34,9 @@ def main():
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body=('Adds a daily 09:17 Europe/Berlin monitoring trigger with an explicit private-config enable switch, $0.25 default reservation cap, once-per-day claim and no-spend skips for disabled schedules, pending questions or insufficient budget. The existing $5 cumulative gate remains unchanged. Dashboard status records completion and skip reasons.\n\nScheduled Telegram summaries report new or materially changed opportunities; unchanged results stay quiet. Manual completion notices and required questions remain supported.\n\nValidation: 43 Python tests and 9 Node tests pass, covering budget limits, disabled schedules, field-level change detection, daily claim concurrency and authenticated status. No paid calls or production deployment performed. Live schedule activation and acceptance remain pending; defaults keep research disabled until activation. Notification retry is still future work.')
+        body=('Adds authenticated run history, pending questions, dashboard answer-and-continue, and safe continuation controls for interrupted cloud runs. Summaries expose progress and usage estimates without prompts or raw page text. Answers validate the stored revision and cannot replace an accepted answer.\n\nWeekend scheduling is disabled on main as requested; this change also adds a runtime weekend guard. Multi-worker experiments remain deferred until the single-worker product is finished.\n\nValidation: 44 Python tests and 11 Node tests pass, covering history privacy, stale/conflicting answers, authentication and safe continuation. Dashboard script syntax checked. No paid search or model calls were made. Live dashboard acceptance remains pending after merge; the wider product is still incomplete.')
         pr=prs[0] if prs else api('POST','/pulls',{'title':'Show job discovery queries and evidence paths','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Schedule bounded daily monitoring and notify on opportunity changes','body':body})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Answer questions and inspect saved runs from the dashboard','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':
