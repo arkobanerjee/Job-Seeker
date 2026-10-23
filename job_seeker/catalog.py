@@ -51,4 +51,10 @@ class Catalog:
                 file=folder/name
                 if file.exists():
                     result=json.loads(file.read_text(encoding="utf-8"))
-                    self.ingest(folder.name,result.get("findings",[]))
+                    findings=result.get("findings",[])
+                    checkpoint=folder/"checkpoint.json"
+                    if checkpoint.exists():
+                        from .provenance import discovery_trails
+                        state=json.loads(checkpoint.read_text(encoding="utf-8"))
+                        findings=[{**f,"discovery_trails":f.get("discovery_trails") or discovery_trails(f["url"],state.get("cache",{}),state.get("sources",{}),folder.name)} for f in findings]
+                    self.ingest(folder.name,findings)

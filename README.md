@@ -105,3 +105,25 @@ configurable runner; legacy research retains its earlier pilot defaults.
 
 Luna and Tavily passed a live smoke test. Search quality still depends on queries and
 source access. Cloud deployment needs its own acceptance run before it is production-ready.
+
+## Discovery evidence
+
+Findings include discovery_trails with search queries, result ranks, run IDs,
+observation times and paths reconstructed from saved search results and observed
+links. Both dashboards display these under How was this found? Missing historical
+evidence stays unavailable. These paths are evidence, not model reasoning logs.
+
+## Clarifications (pending deployment acceptance)
+
+The assessor can request consequential candidate input. The runner persists a
+waiting_user checkpoint and question, then exits. With Telegram enabled, answer
+using /answer QUESTION_ID your answer. Cloud replies require a webhook secret and
+the configured private owner chat; answers are immutable and resume the saved run.
+Resume reuses that run's budget envelope and per-call ledger. Answers are task input,
+not permission to contact employers. Duplicate replies can queue redundant serialized
+runners, but completed runs return their saved result.
+
+Deployment requires TELEGRAM_WEBHOOK_SECRET and TELEGRAM_CHAT_ID Worker secrets,
+a Telegram setWebhook registration pointing to /telegram with that secret_token,
+and notifications.telegram=true in cloud settings. These are not enabled by this PR.
+Dashboard question controls and automatic delivery retry are still pending.

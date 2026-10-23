@@ -63,6 +63,26 @@ class ProductTests(unittest.TestCase):
             with zipfile.ZipFile(bad,'w') as z: z.writestr('../outside','bad')
             with self.assertRaises(ValueError): unpack(bad.getvalue(),root)
 
+    def test_clarification_waits_then_resumes_with_answer(self):
+        from job_seeker.questions import Questions
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); setup(root); calls=[]
+            def search(source,query):
+                source.allowed.add(URL); source.cache[query]=[{'url':URL}]; return source.cache[query]
+            def fetch(source,url):
+                source.records[url]={'url':URL,'http_status':200,'text':QUOTE,'source_id':'known','observed_at':'today','links':[]}; source.fetches=1; return source.records[url]
+            def model(config,prompt,ledger,state):
+                calls.append(prompt)
+                if len(calls)==1: return Assessment(clarification='Would you accept hybrid work?',clarification_reason='Needed for fit')
+                self.assertIn('Yes, hybrid is fine',prompt)
+                return Assessment(findings=[finding(source_id='known')])
+            with patch('job_seeker.runner.ROOT',root),patch.dict('os.environ',{'OPENAI_API_KEY':'fake','TAVILY_API_KEY':'fake'}),patch.object(SourceTools,'search',search),patch.object(SourceTools,'fetch',fetch),patch('job_seeker.runner.invoke_model',side_effect=model):
+                folder,result=run(root/'config.toml'); self.assertEqual(result['status'],'waiting_user')
+                _,result=run(resume=folder.name); self.assertEqual(result['status'],'waiting_user'); self.assertEqual(len(calls),1)
+                store=Questions(root/'runs/questions.sqlite3'); q=store.pending()[0]
+                store.answer(q['id'],q['revision'],'Yes, hybrid is fine')
+                _,result=run(resume=folder.name); self.assertEqual(result['status'],'completed',result); self.assertEqual(len(calls),2)
+
     def test_worker_lock(self):
         with tempfile.TemporaryDirectory() as tmp:
             with single_worker(Path(tmp)):

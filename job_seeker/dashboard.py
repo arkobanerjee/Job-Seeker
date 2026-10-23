@@ -34,7 +34,7 @@ def serve(port=8765):
             args=parse_qs(path.query); category=args.get("category",["all"])[0]; query=args.get("q",[""])[0].casefold()
             rows=catalog.list()
             counts={kind:sum(x.get("kind")==kind for x in rows) for kind in ("vacancy","excluded","watchlist")}
-            content=f"<h1>Job Seeker</h1><p class=meta>Your opportunities, evidence, and decisions.</p><p class=meta>Fit and requirements are model assessments. Verify the listing before applying.</p><p>{counts['vacancy']} shortlist · {counts['excluded']} rejected / review · {counts['watchlist']} watchlist</p>"
+            content=f"<h1>Job Seeker</h1><p class=meta>Your opportunities, evidence, and decisions.</p><p class=meta>Fit and requirements are model assessments. Verify the listing before applying.</p><p>{counts['vacancy']} shortlist Â· {counts['excluded']} rejected / review Â· {counts['watchlist']} watchlist</p>"
             content+=''.join(f'<a href="/?category={k}">{label}</a> &nbsp; ' for k,label in [("all","All"),("vacancy","Shortlist"),("excluded","Rejected / apply anyway"),("watchlist","Companies")])
             content+=f'<form method=get><input name=q placeholder="Search company, role, reason" value="{escape(query,quote=True)}"><button>Search</button></form>'
             content+=f'<form method=post action=/run><input type=hidden name=csrf value="{csrf}"><button>Start a bounded search</button></form><p class=meta>{escape(running["status"])}</p><p><small>Edit config.toml and prompts/master.md to tune searches. Resume and profile stay in private/.</small></p>'
@@ -42,10 +42,18 @@ def serve(port=8765):
                 if category!="all" and f.get("kind")!=category: continue
                 if query and query not in json.dumps(f,ensure_ascii=False).casefold(): continue
                 url=f.get("url",""); safe=url.startswith("https://")
-                content+=f'<article><span class=tag>{escape(f.get("kind",""))}</span><h2>{escape(f["company"])} — {escape(f["title"])}</h2>'
+                content+=f'<article><span class=tag>{escape(f.get("kind",""))}</span><h2>{escape(f["company"])} â€” {escape(f["title"])}</h2>'
                 if safe: content+=f'<a target=_blank rel="noopener noreferrer" href="{escape(url,quote=True)}">Open listing</a>'
                 for label,key in [("Fit","fit_reason"),("Company","company_details"),("Location","location"),("Language","language"),("Eligibility","eligibility"),("Evidence","evidence_quote")]:
                     content+=f'<p><b>{label}:</b> {escape(f.get(key,"Unknown"))}</p>'
+                content+='<details><summary>How was this found?</summary>'
+                if not f.get("discovery_trails"): content+='<p>Discovery trail unavailable for this older result.</p>'
+                for trail in f.get("discovery_trails",[]):
+                    content+='<p>Search: '+escape(trail["query"])+' · result '+str(trail["result_rank"])+'</p>'
+                    content+='<p>Run: '+escape(trail["run_id"])+' · observed: '+escape(trail.get("observed_at") or "Unknown")+'</p><ol>'
+                    for step in trail["path"]: content+='<li>'+escape(step)+'</li>'
+                    content+='</ol>'
+                content+='</details>'
                 reasons=f.get("rejection_reasons") or f.get("concerns",[])
                 content+='<p><b>Reasons / concerns:</b> '+escape('; '.join(reasons))+'</p>'
                 content+=f'<form method=post action=/decision><input type=hidden name=csrf value="{csrf}"><input type=hidden name=id value="{f["id"]}"><select name=decision>'

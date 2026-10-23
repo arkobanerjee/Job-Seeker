@@ -12,6 +12,12 @@ def notify(result):
           f"Shortlist: {sum(x['kind']=='vacancy' for x in findings)}\n"
           f"Rejected / manual review: {sum(x['kind']=='excluded' for x in findings)}\n"
           f"Run: {result['run_id']}\nOpen your dashboard to review. No applications sent.")
+    send(text)
+
+def send(text):
+    token=os.getenv("TELEGRAM_BOT_TOKEN","")
+    chat=os.getenv("TELEGRAM_CHAT_ID","")
+    if not token or not chat or not chat.lstrip("-").isdigit(): raise ValueError("Telegram owner is not configured")
     try:
         with httpx.Client(timeout=20,trust_env=False) as client:
             response=client.post(f"https://api.telegram.org/bot{token}/sendMessage",json={"chat_id":chat,"text":text})
