@@ -116,6 +116,26 @@ class ProductTests(unittest.TestCase):
             with patch('job_seeker.runner.ROOT',root),patch.dict('os.environ',{'OPENAI_API_KEY':'fake','TAVILY_API_KEY':'fake'}),patch.object(SourceTools,'search',search),patch.object(SourceTools,'fetch',fetch),patch('job_seeker.runner.invoke_model',side_effect=model):
                 _,result=run(root/'config.toml');self.assertEqual(result['status'],'completed');self.assertEqual(len(calls),1)
 
+    def test_signal_follows_observed_career_link_and_stays_separate(self):
+        from test_signals import TEXT,signal
+        from job_seeker.registry import Registry
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);setup(root);blog='https://example.org/blog';calls=[]
+            def search(source,query):
+                source.allowed.add(blog);source.cache[query]=[{'url':blog}];return source.cache[query]
+            def fetch(source,url):
+                source.fetches+=1
+                record={'url':url,'source_id':'known' if url==blog else 'job','http_status':200,'text':TEXT if url==blog else QUOTE,'observed_at':'today','links':[URL] if url==blog else []}
+                source.records[url]=record;source.allowed.update(record['links']);return record
+            def model(*args):
+                calls.append(1)
+                return Assessment(source_type='signal',signals=[signal()],follow_links=[URL]) if len(calls)==1 else Assessment(findings=[finding(source_id='job')])
+            with patch('job_seeker.runner.ROOT',root),patch.dict('os.environ',{'OPENAI_API_KEY':'fake','TAVILY_API_KEY':'fake'}),patch.object(SourceTools,'search',search),patch.object(SourceTools,'fetch',fetch),patch('job_seeker.runner.invoke_model',side_effect=model):
+                _,result=run(root/'config.toml');self.assertEqual(result['status'],'completed')
+                self.assertEqual(len(result['signals']),1);self.assertEqual(len(result['findings']),1)
+                self.assertEqual(result['findings'][0]['url'],URL)
+                self.assertEqual(len(Registry(root/'runs/registry.sqlite3').export()['signals']),1)
+
     def test_worker_lock(self):
         with tempfile.TemporaryDirectory() as tmp:
             with single_worker(Path(tmp)):

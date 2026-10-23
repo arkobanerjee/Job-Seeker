@@ -197,3 +197,18 @@ excluded. Continue saved run is available only for recoverable cloud runs with a
 existing budget envelope. History appears after the next checkpoint sync.
 
 Multi-worker performance experiments are deferred until single-worker completion.
+
+## Public company signals
+
+Enable signals.enabled with configured signal queries to use company, hiring,
+technology, product and organizational-change routes. Up to signals.max_queries
+replace slots within limits.max_searches, preserving at least one vacancy query.
+Signal families rotate through a persistent cursor; monitoring issues no searches.
+Signals require matching retrieved source IDs, verbatim quotes and company text.
+Event dates stay unknown unless the ISO date appears explicitly in the source.
+These checks do not prove source ownership or the model interpretation.
+
+Signals are retained separately in the company registry and reports, not promoted
+to vacancies. The assessor may follow supplied careers/vacancy links within the same
+page and spending caps. No hiring probabilities are inferred. Signals do not yet
+provide hiring-momentum trends, independent corroboration or competitor expansion.

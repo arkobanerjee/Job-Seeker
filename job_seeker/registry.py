@@ -18,6 +18,8 @@ class Registry:
         path.parent.mkdir(parents=True,exist_ok=True);self.path=path
         with closing(sqlite3.connect(path)) as db,db:
             db.executescript("""
+            CREATE TABLE IF NOT EXISTS signal_cursor(id INTEGER PRIMARY KEY,value INTEGER);
+            CREATE TABLE IF NOT EXISTS signals(id TEXT PRIMARY KEY,payload TEXT);
             CREATE TABLE IF NOT EXISTS assessments(url TEXT, content_hash TEXT, context_hash TEXT, payload TEXT, PRIMARY KEY(url,content_hash,context_hash));
             CREATE TABLE IF NOT EXISTS companies(id TEXT PRIMARY KEY,name TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS sources(url TEXT PRIMARY KEY,host TEXT,ats TEXT);
@@ -43,6 +45,18 @@ class Registry:
                 db.execute("INSERT OR IGNORE INTO companies VALUES(?,?)",(ident,name))
                 db.execute("INSERT OR IGNORE INTO sources VALUES(?,?,?)",(info['url'],info['host'],info['ats']))
                 db.execute("INSERT OR IGNORE INTO company_sources VALUES(?,?,?)",(ident,info['url'],run_id))
+    def signal_offset(self,advance=0):
+        with closing(sqlite3.connect(self.path)) as db,db:
+            db.execute("INSERT OR IGNORE INTO signal_cursor VALUES(1,0)")
+            value=db.execute("SELECT value FROM signal_cursor WHERE id=1").fetchone()[0]
+            if advance:db.execute("UPDATE signal_cursor SET value=value+? WHERE id=1",(advance,))
+            return value
+    def ingest_signals(self,signals):
+        with closing(sqlite3.connect(self.path)) as db,db:
+            for signal in signals:
+                ident=hashlib.sha256(json.dumps([signal[k] for k in ('url','company','kind','title')]).encode()).hexdigest()[:24]
+                db.execute("INSERT OR REPLACE INTO signals VALUES(?,?)",(ident,json.dumps(signal)))
+        for signal in signals:self.ingest(signal['run_id'],[signal],{})
     def export(self):
         with closing(sqlite3.connect(self.path)) as db:
             companies=[{'id':i,'name':n,'identity_basis':'normalized_name_unverified','sources':[x[0] for x in db.execute('SELECT DISTINCT url FROM company_sources WHERE company_id=?',(i,))]} for i,n in db.execute('SELECT id,name FROM companies ORDER BY name')]
@@ -56,7 +70,7 @@ class Registry:
                         item['change']='first_observation' if previous is None else 'unchanged' if previous==item['content_hash'] else 'text_changed'
                         previous=item['content_hash']
                 sources.append({'url':url,'host':host,'ats':ats,'official_status':'unverified','history':history[-20:]})
-            return {'companies':companies,'sources':sources}
+            return {'companies':companies,'sources':sources,'signals':[dict(json.loads(p),id=i) for i,p in db.execute('SELECT id,payload FROM signals')]}
     def monitor_targets(self,limit):
         with closing(sqlite3.connect(self.path)) as db:
             return [r[0] for r in db.execute("SELECT s.url FROM sources s LEFT JOIN source_observations o ON s.url=o.url GROUP BY s.url ORDER BY MAX(o.observed_at) ASC,s.url LIMIT ?",(limit,))]
@@ -73,3 +87,4 @@ class Registry:
         for checkpoint in root.glob('*/checkpoint.json'):
             state=json.loads(checkpoint.read_text(encoding='utf-8'))
             self.ingest(checkpoint.parent.name,state.get('findings',[]),state.get('sources',{}))
+            self.ingest_signals(state.get('signals',[]))
