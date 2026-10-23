@@ -56,3 +56,7 @@ See experiments/README.md. Default execution is offline; --live explicitly makes
 ## Company opportunities
 
 This separate queue shows company signals, positive comparable board changes and competitor leads. These are reasons to investigate, not confirmed vacancies or proof of expansion. Open the evidence, read uncertainty, and save new/watch/investigate/draft outreach/dismissed plus notes. Prepare editable introduction creates a local template; Save company decision stores it privately. No messages are sent. A lack of cards can mean no recorded signals, insufficient trend history or disabled competitor research.
+
+## Tabs and research coverage
+
+Use Job openings and Company opportunities tabs to switch queues. Refresh preserves the selected tab for the current session. Job filters apply only to the job queue. Company cards reflect collected evidence, not all companies that expanded over a date range. Current Tavily search requests have no explicit date filter and do not exhaustively cover six months. Signal research shares the bounded query/page allowance with vacancy searches. Multiple signals for the same company and source collapse into one card; momentum needs comparable observations on different dates, and competitor cards require discovered evidence. A historical company-news backfill is a separate research workload requiring its own scope and spending allowance.
