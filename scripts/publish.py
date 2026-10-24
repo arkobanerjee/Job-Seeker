@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/opportunity-tabs-and-coverage'
+BRANCH='codex/adaptive-controller-foundation'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -14,7 +14,7 @@ def main():
     files=[]
     for directory in ('job_seeker','tests','cloud','scripts','.github','prompts','experiments'):
         files.extend(p for p in (ROOT/directory).rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix in ('.py','.js','.toml','.json','.yml','.md'))
-    files.extend(ROOT/p for p in ('.gitignore','.env.example','README.md','USER_GUIDE.md','comparison-plan.md','DEPLOYMENT.md','config.toml','profile.example.md','pyproject.toml','requirements.lock'))
+    files.extend(ROOT/p for p in ('.gitignore','.env.example','README.md','USER_GUIDE.md','comparison-plan.md','implementation-plan.md','DEPLOYMENT.md','config.toml','profile.example.md','pyproject.toml','requirements.lock'))
     entries=[{'path':p.relative_to(ROOT).as_posix(),'mode':'100644','type':'blob','content':p.read_text(encoding='utf-8')} for p in files]
     secret_values=[v for k,v in values.items() if v and len(v)>12 and any(s in k for s in ('TOKEN','KEY'))]
     if any(v in e['content'] for e in entries for v in secret_values): raise ValueError('A credential was detected in publication files')
@@ -30,13 +30,13 @@ def main():
         parent=head.json()['object']['sha'] if exists else api('GET','/git/ref/heads/main')['object']['sha']
         tree_base=api('GET','/git/commits/'+parent)['tree']['sha']
         tree=api('POST','/git/trees',{'base_tree':tree_base,'tree':entries})
-        commit=api('POST','/git/commits',{'message':'Separate opportunity tabs and explain research coverage','tree':tree['sha'],'parents':[parent]})
+        commit=api('POST','/git/commits',{'message':'Add bounded adaptive research controller foundation','tree':tree['sha'],'parents':[parent]})
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body='Separates job openings and company opportunities into labelled dashboard tabs. The selected tab is preserved across refreshes within the session; job filters are hidden on the company view. Company rendering respects the selected tab. Adds an explicit coverage explanation: saved leads are bounded collected evidence, not an exhaustive six-month company-news search. Documents signal deduplication, momentum history and backfill scope.\n\nNo discovery settings, budgets or production data are changed. Validation: dashboard syntax and Node backend tests; tab visibility checks exercise the actual dashboard script with a minimal DOM harness.'
-        pr=prs[0] if prs else api('POST','/pulls',{'title':'Separate opportunity tabs and explain research coverage','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Separate opportunity tabs and explain research coverage','body':body})
+        body='Adds the first item of the adaptive research plan: a provider-independent controller contract with typed decisions, novel-query and observed-link admission, medium/high reasoning policy, and bounded stop checks that preserve the original deadline on resume. Includes the ordered implementation checklist. The controller is not wired into the runner yet; production behavior and spending remain unchanged.\n\nValidation: all 115 Python tests pass, including five new tests for resource limits, duplicate queries, invented links, resume deadlines and invalid decisions.'
+        pr=prs[0] if prs else api('POST','/pulls',{'title':'Add bounded adaptive research controller foundation','head':BRANCH,'base':'main','body':body,'draft':True})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Add bounded adaptive research controller foundation','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':
