@@ -80,7 +80,9 @@ def seed_queries(settings,started_at):
     for source in selected:
         directory=source.split('/')[0] in ('ycombinator.com','www.ycombinator.com')
         terms=' startup company AI data platform' if directory else ' startup funding raised seed series A announcement'+suffix
-        targeted.append({'theme':'startup:'+source,'track':'ai','query':'site:'+source+' '+c.focus+terms})
+        host,_,path=source.partition('/')
+        source_filter='site:'+host+(' inurl:'+path if path else '')
+        targeted.append({'theme':'startup:'+source,'track':'ai','query':source_filter+' '+c.focus+terms})
     return targeted+[{'theme':t,'track':'ai','query':c.focus+' '+TERMS[t]+suffix} for t in dict.fromkeys(c.themes)]
 
 

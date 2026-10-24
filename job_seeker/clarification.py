@@ -9,6 +9,9 @@ from .tracing import record
 GUIDANCE='''CLARIFICATION POLICY:
 Ask about candidate-owned preferences when the answer would materially change
 search scope, ranking or recommendations, even if research could otherwise continue.
+Preferences in the profile apply to both vacancy and company discovery unless
+the candidate explicitly distinguishes them. Do not invent a company-specific
+geography gap when the candidate already states target regions.
 Before searching, check unresolved geography/relocation, acceptable seniority or
 internships, work arrangement and the candidate's need for sponsorship. Do not ask
 all of these by rote: use the profile, resume, configured preferences and saved
@@ -101,7 +104,8 @@ def preflight(settings,state,prompt,policy,ledger,root,invoke,persist,boundary):
     if not state.get('preference_check'):
         boundary()
         config=settings.model_copy(deep=True);config.model.reasoning_effort=settings.adaptive.planning_effort
-        review=invoke(config,policy+'\n'+GUIDANCE+'\n'+prompt+context(settings,store,state)+
+        operation_scope=(' For company discovery, clarify only company-target scope. Do not ask about internships, employment type, salary or office attendance unless it directly changes which company events to investigate; those belong to vacancy matching.' if state.get('mode')=='company' else '')
+        review=invoke(config,policy+'\n'+GUIDANCE+operation_scope+'\n'+prompt+context(settings,store,state)+
                       '\nBefore this '+state.get('mode','discovery')+' operation, identify the single most useful unresolved candidate preference. Ask if it changes which opportunities to pursue; research need not be impossible. Return ready if relevant preferences are already clear or deferred. Never ask a question solely to demonstrate messaging.',ledger,state,schema=PreferenceCheck)
         state['preference_check']=review.model_dump();persist()
     review=PreferenceCheck.model_validate(state['preference_check'])
