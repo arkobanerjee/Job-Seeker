@@ -119,7 +119,6 @@ def run_cloud(resume=None,monitor=False,scheduled=False,operation="discovery"):
         if not settings.monitoring.schedule_enabled: reason='schedule_disabled'
         elif datetime.now(ZoneInfo('Europe/Berlin')).weekday()>=5: reason='weekend'
         elif Questions(ROOT/'runs/questions.sqlite3').pending(): reason='waiting_for_user'
-        elif scheduled_cap(settings,cloud.request('budget')) is None: reason='budget_review_required'
         if reason:
             cloud.request('monitor-status','PUT',{'status':'skipped','reason':reason})
             return None,{'status':'skipped','reason':reason,'findings':[]}

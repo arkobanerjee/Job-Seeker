@@ -8,7 +8,7 @@ The dashboard token is kept only in browser memory, so sign in again after a ref
 ## Local operation
 
 1. Fill `.env` using `.env.example`. Do not put credentials in configuration or prompts.
-2. Copy `profile.example.md` to `private/profile.md` if no profile exists. Optionally
+2. Copy `examples/profile.md` to `private/profile.md` if no profile exists. Optionally
    create `private/resume.md`. Markdown is loaded directly; PDF conversion is not included.
 3. Edit `config.toml` and `prompts/master.md`.
 4. Run `python -m job_seeker.cli check`, then `python -m job_seeker.cli run`.
@@ -65,10 +65,11 @@ runner after cutover.
 
 ## Budget and recovery
 
-The existing $5 review gate and $2 run ceiling remain. Raising them requires a separate
-budget decision; the remaining $15 is not automatically unlocked by deployment.
+The production app uses a $0.50 per-run threshold for vacancy/company discovery
+and a $0.25 scheduled monitoring allowance. There is no cumulative spending gate.
 Cloud reserves the full run ceiling atomically before starting paid work. Reservations
-are not refunded after a crash, and a fresh runner cannot reset the global allowance.
+are not refunded after a crash. Resuming retains the original run allowance;
+a genuinely new run receives its own allowance. Historical totals never block a run.
 Local per-call estimates remain visible in each run's result. Cloud reservations are
 deliberately more conservative than those estimates.
 
@@ -174,14 +175,13 @@ examples privately before a release decision, and hold some out when tuning prom
 - Keep a single serialized cloud writer. Weekday schedule remains 09:17 Europe/Berlin;
   no automatic weekend research. The scheduled workflow runs notification recovery,
   maintenance, then its bounded research check.
-- Keep the $5 cumulative review gate, $2 maximum run reservation and $0.25 scheduled
-  cap. There is no monthly reset and no automatic unlock of the original $20 allowance.
-  Compare provider billing with local observed estimates before approving more credit.
+- Use $0.50 per vacancy/company run and $0.25 per scheduled check. There is no
+  cumulative cap. Compare provider billing with local observed estimates.
   Missing usage, killed calls and ambiguous delivery keep their reservations. Do not
   refund the difference between reservations and estimates automatically.
-- A dedicated acceptance run reserves at most $0.40 in the same cloud gate before
+- A dedicated acceptance run reserves at most $0.40 as a per-run cloud reservation before
   any model calls, with an isolated private ledger and no Tavily searches. Its ledger
-  is separate from the live research snapshot; the global envelope remains charged.
+  is separate from the live research snapshot; the recorded reservation remains charged.
   `python -m job_seeker.acceptance` is explicit paid work, never part of CI or the
   weekday schedule. Keep its outputs under private/acceptance.
 - Active evidence retention: keep the newest 20 runs and at least 30 days. Only

@@ -45,7 +45,7 @@ class ModelSettings(Strict):
         return self
 
 class Limits(Strict):
-    run_usd: float = Field(default=2, gt=0, le=2, allow_inf_nan=False)
+    run_usd: float = Field(default=0.50, gt=0, le=2, allow_inf_nan=False)
     max_searches: int = Field(default=6, ge=1, le=20)
     max_pages: int = Field(default=12, ge=1, le=40)
     max_model_calls: int = Field(default=16, ge=1, le=50)
@@ -80,7 +80,7 @@ class Search(Strict):
     queries: list[Query] = Field(min_length=1, max_length=30)
 
 class CompanyDiscoverySettings(Strict):
-    run_usd: float = Field(default=0.40,gt=0,le=2,allow_inf_nan=False)
+    run_usd: float = Field(default=0.50,gt=0,le=2,allow_inf_nan=False)
     max_searches: int = Field(default=10,ge=1,le=20)
     max_pages: int = Field(default=24,ge=1,le=40)
     max_model_calls: int = Field(default=32,ge=1,le=50)

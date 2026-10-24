@@ -24,7 +24,7 @@ Every batch freezes prompt, configuration, tasks and input hashes, and writes re
 
 Default simulation uses deterministic stand-ins and a finite searchable corpus. Its timing and output quality are not real agent performance results. It verifies isolation and accounting mechanics. The live pilot uses the same conservative finding validation as the app, but is intentionally smaller than the production pipeline: signals, competitor discovery, board monitoring, outbox and durable clarification/resumption are excluded. Questions are saved locally; no user messages are sent. This is a local capability boundary, not an OS sandbox for untrusted code.
 
-Inspect report.md and fill review-labels.json before making quality claims. More briefs and repeated paired runs are necessary for useful architecture conclusions. See comparison-plan.md in the workspace for the broader protocol.
+Inspect report.md and fill review-labels.json before making quality claims. More briefs and repeated paired runs are necessary for useful architecture conclusions. See ../docs/plans/comparison-plan.md for the broader protocol.
 
 
 ## Production adaptive-runner acceptance

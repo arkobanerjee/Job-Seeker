@@ -27,7 +27,7 @@ class CompanyDiscoveryTests(unittest.TestCase):
         self.assertEqual(settings.limits.max_searches,6)
         self.assertEqual(company.limits.max_searches,10)
         self.assertEqual(company.limits.max_pages,24)
-        self.assertEqual(company.limits.run_usd,0.40)
+        self.assertEqual(company.limits.run_usd,0.50)
         self.assertEqual(company.model.max_output_tokens,8000)
         self.assertTrue(company.adaptive.enabled)
         self.assertFalse(settings.adaptive.enabled)

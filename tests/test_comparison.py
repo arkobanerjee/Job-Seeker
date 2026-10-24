@@ -84,11 +84,12 @@ class ComparisonTests(unittest.TestCase):
                 self.assertEqual(sum(pool.map(reserve,range(8))),3)
             self.assertEqual(Ledger(path,'pair',.30).summary()['reserved_usd'],.30)
 
-    def test_global_five_dollar_cap_survives_new_run(self):
+    def test_new_run_is_not_blocked_by_cumulative_history(self):
         with tempfile.TemporaryDirectory() as temporary:
             path=Path(temporary)/'budget.sqlite3'
             for index in range(5):Ledger(path,str(index),1).reserve('test',1)
-            with self.assertRaises(BudgetExceeded):Ledger(path,'new',1).reserve('test',.01)
+            Ledger(path,'new',1).reserve('test',.01)
+            self.assertEqual(Ledger(path,'new',1).summary()['total_reserved_usd'],5.01)
 
     def test_production_workspace_rejected(self):
         with self.assertRaises(ValueError):c.safe_home(c.ROOT/'runs')

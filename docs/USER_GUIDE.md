@@ -31,7 +31,7 @@ Local configuration and live dashboard configuration are separate copies. Editin
 
 ## Schedule and spending
 
-The configured schedule is weekdays at 09:17 Europe/Berlin, with a weekend guard. It is subject to enabled settings, storage health and budget availability. Paid research stops at the production review gate; a completed status does not prove a new search ran or that a job was found. Public board reads may continue without paid research.
+The configured schedule is weekdays at 09:17 Europe/Berlin, with a weekend guard. It is subject to enabled settings, storage health and budget availability. Paid research stops at the saved per-run allowance; a completed status does not prove a new search ran or that a job was found. Public board reads may continue without paid research.
 
 Production and comparison allowances are independent. Comparison results stay under private/comparison and never populate the app. Current operating choice is setup A, one sequential researcher. The experiment's GPT-6 Luna selection does not change the production model.
 
@@ -102,12 +102,11 @@ or a careers link does not establish a current suitable vacancy.
 
 After deployment, click **Discover companies** to queue a manual company research
 run. Review results in **Company opportunities**. **Find job openings** continues
-to start vacancy research. Both operations use the same cumulative spending gate
-and serialized worker, so they cannot bypass each other's reservations.
+to start vacancy research. Both operations use the same serialized worker and retain their own saved per-run allowances. Cumulative spending is recorded but does not block later runs.
 
 Tune `[company_discovery]` in the configuration: `run_usd`, `max_searches`,
 `max_pages`, `max_model_calls`, `focus`, `themes`, `lookback_months` and
-`include_older`. The default company ceiling is $0.40 and never exceeds the
+`include_older`. The default company ceiling is $0.50 and never exceeds the
 configured general run-dollar ceiling. Smaller allowances can stop before all
 themes are searched; query/page/model limits are ceilings, not promised usage.
 
@@ -191,9 +190,8 @@ useful-job yield. Company discovery is a separate explicit manual operation.
 
 After the acceptance fixes are merged, `[adaptive] max_output_tokens` controls
 assessment/planning output headroom (default 8,000). `[company_discovery] run_usd`
-defaults to $0.40. This is a maximum conservative reservation, not an expected
-invoice amount. Existing smaller per-run and cumulative gates still win. No
-automatic budget reset or additional scheduled company run is added.
+defaults to $0.50. This is a maximum conservative reservation, not an expected
+invoice amount. The smaller operation/general per-run allowance applies. There is no cumulative gate. Resuming keeps the original run allowance; a new run gets a new allowance. No additional scheduled company run is added.
 
 Long pages and link lists are bounded for model input. If relevant source text
 was omitted, a vacancy proposal remains for manual review. Output-token
@@ -209,4 +207,7 @@ versus one from configured queries; three were stronger/possible matches and
 three were stretches. Results vary and require review. Title-only JavaScript
 pages and application forms are retained as unverified evidence rather than
 promoted as assessed vacancies. Browser rendering is not added by this change.
-See adaptive-evaluation.md for evaluation limits and rollout status.
+See evaluations/adaptive-evaluation.md for evaluation limits and rollout status.
+
+
+Spending history is informational. Vacancy and company runs currently allow $0.50 each; weekday monitoring allows $0.25. Reaching a spending limit saves a partial result without a provider-failure flag. Repeated runs have no overall cumulative cap.
