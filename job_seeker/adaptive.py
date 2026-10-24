@@ -94,7 +94,8 @@ def research_loop(state, policy, limits, *, plan, search, inspect, ask, persist,
             state['rounds'] = state.get('rounds', 0)+1
             active = {'decision':decision.model_dump(), 'actions':actions, 'query_index':0,
                       'phase':'search', 'inspected':0,
-                      'before':len(state.get('findings', []))+len(state.get('signals', []))}
+                      'before':len(state.get('findings', []))+len(state.get('signals', [])),
+                      'navigation_before':state.get('navigation_progress',0)}
             state['active_round'] = active
             if actions['high_reasoning']:
                 state['high_escalations'] = state.get('high_escalations', 0)+1
@@ -123,6 +124,7 @@ def research_loop(state, policy, limits, *, plan, search, inspect, ask, persist,
         inspect(actions['inspect_urls'], actions['high_reasoning'])
         if state.get('status') == 'waiting_user': return
         after = len(state.get('findings', []))+len(state.get('signals', []))
-        state['stalled_rounds'] = state.get('stalled_rounds', 0)+1 if after == active['before'] else 0
+        progressed = after > active['before'] or state.get('navigation_progress',0)>active.get('navigation_before',0)
+        state['stalled_rounds'] = state.get('stalled_rounds', 0)+1 if not progressed else 0
         trace('round_end', round=state['rounds'], inspected=active['inspected'], new_records=after-active['before'])
         state.pop('active_round', None); persist()

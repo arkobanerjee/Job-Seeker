@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/adaptive-runner-integration'
+BRANCH='codex/adaptive-vacancy-discovery'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -30,13 +30,13 @@ def main():
         parent=head.json()['object']['sha'] if exists else api('GET','/git/ref/heads/main')['object']['sha']
         tree_base=api('GET','/git/commits/'+parent)['tree']['sha']
         tree=api('POST','/git/trees',{'base_tree':tree_base,'tree':entries})
-        commit=api('POST','/git/commits',{'message':'Integrate restartable adaptive research rounds','tree':tree['sha'],'parents':[parent]})
+        commit=api('POST','/git/commits',{'message':'Improve adaptive vacancy search and careers navigation','tree':tree['sha'],'parents':[parent]})
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body='Integrates the opt-in adaptive controller with the research runner: checkpointed plan/search/inspect/replan rounds, compact evidence memory, medium reasoning and bounded high-effort assessment batches. Planner questions use the durable question/Telegram path. Limits and spending remain enforced; time waiting for an answer is excluded without resetting counters. Saves action traces and explicit stop reasons. Existing configs stay on the previous path until adaptive.enabled is set.\n\nValidation: full Python suite, including replanning, reasoning selection, search interruption/resume, clarification/resume and planning reservation refusal. No paid live research or production settings changes.'
-        pr=prs[0] if prs else api('POST','/pulls',{'title':'Integrate restartable adaptive research rounds','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Integrate restartable adaptive research rounds','body':body})
+        body='Improves opt-in adaptive vacancy research with editable role/region hints, attempted-query gaps and failed/closed/rejected page outcomes supplied to replanning. Ranks observed career/ATS links, queues a bounded number of navigation candidates and preserves route context. Newly discovered navigation links count as progress so index traversal can reach a posting. Removes a fixed German-proficiency assumption from the finding schema.\n\nValidation: full Python suite plus an offline end-to-end scenario covering expired posting → revised query → careers index → observed posting, navigation admission/ranking and honest coverage hints. Production configuration remains unchanged; live quality comparison is still pending.'
+        pr=prs[0] if prs else api('POST','/pulls',{'title':'Improve adaptive vacancy search and careers navigation','head':BRANCH,'base':'main','body':body,'draft':True})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Improve adaptive vacancy search and careers navigation','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

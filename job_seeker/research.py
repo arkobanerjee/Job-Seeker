@@ -27,7 +27,7 @@ class Finding(BaseModel):
     eligibility: str = Field(description="Employer-stated authorization or sponsorship, otherwise unknown")
     eligibility_status: Literal['stated','unknown'] | None = Field(default=None,description="Use unknown when employer authorization/sponsorship policy is unstated. A candidate visa does not establish employer eligibility. Null only for legacy saved data.")
     concerns: list[str]
-    mandatory_conflicts: list[str] = Field(default_factory=list, description="Confirmed mandatory requirements that contradict the candidate's stated facts. Mandatory German communication conflicts with very basic German even without a CEFR level. Missing information alone is never a conflict.")
+    mandatory_conflicts: list[str] = Field(default_factory=list, description="Confirmed mandatory requirements that contradict the candidate's stated facts. Compare employer requirements with the actual language proficiency in the supplied profile/resume. Do not assume a fixed candidate German level. Missing information alone is never a conflict.")
 
 class Report(BaseModel):
     findings: list[Finding] = Field(max_length=12)

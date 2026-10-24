@@ -60,6 +60,21 @@ class Query(Strict):
     track: Literal["ai", "data"]
     query: str = Field(min_length=1, max_length=350)
 
+class VacancySettings(Strict):
+    role_families: dict[Literal['ai','data'],list[str]] = Field(default_factory=lambda:{
+        'ai':['AI engineer','applied AI engineer','machine learning engineer','LLM engineer'],
+        'data':['data scientist','data analyst','analytics engineer','BI analyst']})
+    regions: list[str] = Field(default_factory=lambda:['Germany','Europe','UAE','remote'],max_length=12)
+    navigation_links: int = Field(default=2,ge=0,le=3)
+
+    @model_validator(mode='after')
+    def bounded_terms(self):
+        if any(not terms or len(terms)>12 or any(not t.strip() or len(t)>100 for t in terms) for terms in self.role_families.values()):
+            raise ValueError('Use 1–12 role terms per track, each 1–100 characters')
+        if any(not t.strip() or len(t)>100 for t in self.regions):
+            raise ValueError('Use region terms of 1–100 characters')
+        return self
+
 class Search(Strict):
     queries: list[Query] = Field(min_length=1, max_length=30)
 
@@ -149,6 +164,7 @@ class CorroborationSettings(Strict):
 
 
 class Settings(Strict):
+    vacancy: VacancySettings = Field(default_factory=VacancySettings)
     adaptive: AdaptiveSettings = Field(default_factory=AdaptiveSettings)
     model: ModelSettings = Field(default_factory=ModelSettings)
     limits: Limits = Field(default_factory=Limits)

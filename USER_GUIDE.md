@@ -82,3 +82,17 @@ the time allowance, while all spending and counters remain attached to the saved
 run. Stops preserve unfinished work and an explicit stop reason. The JSON run
 artifacts include `research_trace`; dashboard trace presentation is a later step.
 The dedicated company-discovery operation is also a later step.
+
+
+### Tuning adaptive vacancy searches
+
+`[vacancy] role_families` defines AI/data role synonyms; `regions` defines preferred
+search areas. These are planning hints, not automatic exclusion rules. Your
+profile and resume still supply candidate facts. `navigation_links` limits
+observed career/ATS navigation links automatically queued per page (default two).
+Searches and navigation share the existing run allowance.
+
+The next planning round receives failed-page status and earlier rejection
+reasons. It can change role titles or sources and inspect an observed individual
+posting behind a careers index. This can improve discovery, but a query attempt
+or a careers link does not establish a current suitable vacancy.
