@@ -102,6 +102,17 @@ class CompanyDiscoverySettings(Strict):
     include_older: bool = False
     focus: str = Field(default='Germany Europe AI RAG data engineering',min_length=1,max_length=150)
     themes: list[Literal['funding','expansion','product','deployment','team']] = Field(default_factory=lambda:['funding','expansion','product','deployment','team'],min_length=1,max_length=5)
+    startup_source_queries: int = Field(default=2,ge=0,le=3)
+    startup_sources: list[str] = Field(default_factory=lambda:['ycombinator.com/companies','eu-startups.com','tech.eu'],max_length=8)
+
+    @model_validator(mode='after')
+    def safe_startup_sources(self):
+        import re
+        for source in self.startup_sources:
+            if len(source)>100 or not re.fullmatch(r'[a-z0-9][a-z0-9.-]*(?:/[a-zA-Z0-9_/-]*)?',source):
+                raise ValueError('Startup sources must be public hostnames with optional paths, without URL schemes or search operators')
+            CompanyProfile(name='Startup source',official_domains=[source.split('/')[0]])
+        return self
 
 class Notifications(Strict):
     telegram: bool = False

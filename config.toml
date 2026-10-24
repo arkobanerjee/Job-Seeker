@@ -64,6 +64,9 @@ lookback_months = 6
 include_older = false
 focus = "Germany Europe AI RAG data engineering"
 themes = ["funding", "expansion", "product", "deployment", "team"]
+# Shares the company search allowance; directory membership is not recent funding.
+startup_source_queries = 2
+startup_sources = ["ycombinator.com/companies", "eu-startups.com", "tech.eu"]
 
 [monitoring]
 schedule_enabled = false

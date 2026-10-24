@@ -17,6 +17,11 @@ COMPANY_GUIDANCE = """COMPANY DISCOVERY OPERATION:
 Find concrete funding, expansion, product launches, deployments and team-growth
 events relevant to the candidate. Inspect original announcements and company
 pages. A generic blog, author biography or keyword mention is insufficient.
+Use configured startup directory and funding-publication searches as discovery
+routes. YC batch/directory membership is a company lead, not proof of a recent
+funding round. Find a dated company/investor announcement to establish a recent
+transaction. Directory snippets and search hits are not funding evidence. Keep
+undated or unsupported leads for investigation and do not invent funding dates.
 Identify the company and event; quote evidence and distinguish facts from
 inferred candidate relevance. Funding or a product launch does not establish
 hiring or a suitable vacancy. Competitor relationships alone do not establish
@@ -42,7 +47,7 @@ def operation_settings(settings,operation):
         settings.limits.max_pages=c.max_pages
         settings.limits.max_model_calls=c.max_model_calls
         settings.adaptive.enabled=True
-        # Leave room for a refinement round after the five initial themes.
+        # Permit refinement after theme/source seeds without treating empty rounds as evidence.
         settings.adaptive.max_stalled_rounds=max(3,settings.adaptive.max_stalled_rounds)
         settings.monitoring.enabled=False
         settings.signals.enabled=True
@@ -63,7 +68,20 @@ def seed_queries(settings,started_at):
     year,month=divmod(month_index,12);month+=1
     lower=now.replace(year=year,month=month,day=min(now.day,calendar.monthrange(year,month)[1])).date().isoformat()
     suffix='' if c.include_older else ' after:'+lower
-    return [{'theme':t,'track':'ai','query':c.focus+' '+TERMS[t]+suffix} for t in dict.fromkeys(c.themes)]
+    sources=list(dict.fromkeys(c.startup_sources));selected=[]
+    if sources and c.startup_source_queries:
+        # Always include the first preferred source; rotate the remaining sources
+        # on the saved UTC run date so restarts cannot silently change the plan.
+        selected=sources[:1];rest=sources[1:]
+        if rest:
+            offset=now.date().toordinal()%len(rest)
+            selected+=(rest[offset:]+rest[:offset])[:c.startup_source_queries-1]
+    targeted=[]
+    for source in selected:
+        directory=source.split('/')[0] in ('ycombinator.com','www.ycombinator.com')
+        terms=' startup company AI data platform' if directory else ' startup funding raised seed series A announcement'+suffix
+        targeted.append({'theme':'startup:'+source,'track':'ai','query':'site:'+source+' '+c.focus+terms})
+    return targeted+[{'theme':t,'track':'ai','query':c.focus+' '+TERMS[t]+suffix} for t in dict.fromkeys(c.themes)]
 
 
 def company_memory(settings,state):
@@ -72,6 +90,8 @@ def company_memory(settings,state):
     return {'theme_seeds':seeds,'themes_not_attempted':[s['theme'] for s in seeds if s['query'] not in attempted],
             'lookback_months':settings.company_discovery.lookback_months,
             'include_older':settings.company_discovery.include_older,
+            'startup_sources':settings.company_discovery.startup_sources,
+            'startup_source_query_allowance':settings.company_discovery.startup_source_queries,
             'note':'Attempted themes are not exhaustive coverage; date hints require source verification.'}
 
 

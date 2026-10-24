@@ -53,3 +53,17 @@ class SignalQualityTests(unittest.TestCase):
     def test_missing_event_fields_do_not_promote_historical_records(self):
         good,_=self.validate('ExampleCorp raised funding for a production RAG platform.',event='unknown',terms=[])
         self.assertEqual(good[0]['qualification_status'],'investigate')
+
+
+class StartupFundingEvidenceTests(unittest.TestCase):
+    def test_yc_membership_without_transaction_is_investigation_only(self):
+        from job_seeker.signal_quality import qualify_signal
+        quote='ExampleCorp builds a RAG platform and received funding from Y Combinator.'
+        signal=Signal(company='ExampleCorp',title='Startup profile',kind='company',source_id='one',evidence_quote=quote,relevance='The RAG platform matches production retrieval experience.',event_type='funding',profile_terms=['RAG'])
+        page={'url':'https://www.ycombinator.com/companies/example','text':quote}
+        verdict=qualify_signal(signal,page,'RAG engineering')
+        self.assertEqual(verdict['qualification_status'],'investigate')
+        self.assertTrue(any('membership' in r for r in verdict['qualification_reasons']))
+        quote='ExampleCorp announced a seed round to develop its RAG platform.'
+        signal=signal.model_copy(update={'evidence_quote':quote});page['text']=quote
+        self.assertEqual(qualify_signal(signal,page,'RAG engineering')['qualification_status'],'qualified')

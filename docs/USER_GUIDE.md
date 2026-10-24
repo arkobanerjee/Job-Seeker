@@ -250,3 +250,44 @@ not ask you to establish an employer's sponsorship policy, language requirement
 or hiring status. Those remain source-research questions or unknown facts. It
 does not send employer messages. Question generation is a model decision; this
 feature does not force a quota of questions or create a conversation every run.
+
+
+## Applied jobs and saving decisions
+
+The job list opens in **To review**, hiding Applied and Dismissed records.
+Choose a status on a job card and click **Save decision**. A successful Applied
+save immediately moves the job out of To review; the application-status badge,
+counts and feedback update. Choose **Applied** in the application-status filter
+to see it again, or **All application statuses** to see the whole catalog.
+The role-category filter is separate; selecting Applied resets it to All.
+
+Saving a decision records your action and notes; it does not submit an application.
+Notes persist after refresh and across later research observations. Errors appear
+beside the button, and a failed save does not change the stored status. Unsaved
+notes on other job cards survive saving one job. Existing applied decisions are
+honored immediately; jobs do not need to be marked again after this update.
+
+## Startup directories and funding publications
+
+Company discovery now deliberately searches configured startup sources alongside
+its funding/expansion/product/deployment/team themes. The defaults are
+`ycombinator.com/companies`, `eu-startups.com`, and `tech.eu`.
+Set `[company_discovery] startup_source_queries` (default 2, maximum 3, 0 disables)
+and `startup_sources` to tune this. The first preferred source is always included;
+remaining slots rotate through other sources based on the saved UTC run date.
+Restarts retain the same seed plan. These queries share the company's existing
+search, page, time, round and $0.50 per-run limits; they are not extra unlimited work.
+With small allowances, not every theme/source will be inspected. Exact executed
+queries and visited pages appear in the research timeline.
+
+A YC directory entry is a company-discovery pointer, not evidence of a recent
+funding round or a suitable vacancy. Directory searches omit the recent-date hint
+because directory indexing dates are not funding dates. Funding-publication and
+other event searches retain the configured lookback hint, which still requires
+checking the actual event date. The agent should follow original company/investor
+announcements. Unsupported membership-only funding claims stay in investigation;
+unknown dates stay unknown. Public pages only: no new accounts, login automation,
+paid data subscriptions or LinkedIn dependency are introduced.
+
+Sources: [YC directory](https://www.ycombinator.com/companies) and
+[YC's separate job board](https://www.ycombinator.com/jobs).

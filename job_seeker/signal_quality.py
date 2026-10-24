@@ -1,8 +1,9 @@
 """Conservative evidence gates, separate from model-assessed candidate relevance."""
 import re
+from urllib.parse import urlsplit
 
 EVENTS={
-    'funding':('Reported funding',r'\b(raised|secured|funding|financing|investment|series [abc])\b'),
+    'funding':('Reported funding',r'\b(raised|secured|funding|financing|investment|seed round|series [abc])\b'),
     'expansion':('Reported business expansion',r'\b(expand\w*|new office|opened|opening|new market|increas\w* .{0,60}headcount|headcount .{0,30}increas\w*)\b'),
     'hiring':('Explicit hiring / team growth',r'\b(hiring|recruiting|grow\w* (?:our |this |the )?team|expand\w* (?:our |this |the )?team|team expansion)\b'),
     'product':('Relevant product launch',r'\b(launch\w*|released?|introduc\w*|general availability)\b'),
@@ -20,6 +21,9 @@ def qualify_signal(signal,page,background):
     event=EVENTS.get(signal.event_type)
     if not event: reasons.append('No concrete qualifying event; technical interest or generic mention only')
     elif not re.search(event[1],quote): reasons.append('Event category lacks matching wording in the quoted evidence')
+    host=(urlsplit(page.get('url','')).hostname or '').lower()
+    if signal.event_type=='funding' and host in ('ycombinator.com','www.ycombinator.com') and not re.search(r'\b(raised|secured|closed|announced|invested|financing round|funding round|series [abc]|seed round)\b',quote):
+        reasons.append('Accelerator/directory membership does not establish a recent funding transaction')
     if re.search(r'\b(no|not|never|rumou?r|unconfirmed|hypothetical|might|could)\b',quote):
         reasons.append('Excerpt contains negation, speculation or uncertainty; investigate manually')
     def contains(term,text):
