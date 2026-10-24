@@ -48,7 +48,7 @@ class Assessment(BaseModel):
     company_details: str = "Unknown"
     rejection_reasons: list[str] = Field(default_factory=list,max_length=10)
     rejection_evidence: list[str] = Field(default_factory=list,max_length=10)
-    follow_links: list[str] = Field(default_factory=list,max_length=2,description="Only supplied links to relevant careers pages or individual vacancies; follow from an index or signal. Never invent a link")
+    follow_links: list[str] = Field(default_factory=list,max_length=2,description="Only supplied links to relevant company announcements, products, careers pages or individual vacancies; follow from an index or signal. Never invent a link")
     limitations: list[str] = Field(default_factory=list,max_length=8)
 
 class GraphState(TypedDict):
@@ -113,11 +113,11 @@ def invoke_model(settings,prompt,ledger,state,schema=Assessment):
     state.pop("pending_call",None)
     return result
 
-def run(config=None,resume=None,on_checkpoint=None,control=None):
+def run(config=None,resume=None,on_checkpoint=None,control=None,operation="discovery"):
     from dotenv import load_dotenv
     load_dotenv(ROOT/".env",override=False)
     with single_worker(ROOT/"runs"):
-        folder,result=_run(config,resume,on_checkpoint,control)
+        folder,result=_run(config,resume,on_checkpoint,control,operation)
         settings=Settings.model_validate(json.loads((folder/"checkpoint.json").read_text(encoding="utf-8"))["config"])
         if settings.notifications.telegram and result["status"]!="waiting_user" and (not result.get("scheduled") or result.get("error_type") or any(f.get("opportunity_change") in ("new","changed") for f in result["findings"])):
             try:
@@ -129,7 +129,7 @@ def run(config=None,resume=None,on_checkpoint=None,control=None):
         if on_checkpoint: on_checkpoint()
         return folder,result
 
-def _run(config,resume,on_checkpoint=None,control=None):
+def _run(config,resume,on_checkpoint=None,control=None,operation="discovery"):
     if resume:
         if not re.fullmatch(r"[0-9a-f]{32}",resume): raise ValueError("Invalid run ID")
         folder=ROOT/"runs"/resume
@@ -145,8 +145,10 @@ def _run(config,resume,on_checkpoint=None,control=None):
         settings,base=load_settings(config); prompt=render_prompt(settings,base)
         if os.getenv("JOB_SEEKER_MONITORING")=="true": settings.monitoring.enabled=True
         if os.getenv("JOB_SEEKER_SCHEDULED")=="true": settings.limits.run_usd=min(settings.limits.run_usd,settings.monitoring.daily_run_usd)
+        from .company_discovery import operation_settings
+        settings=operation_settings(settings,operation)
         run_id=uuid4().hex; folder=ROOT/"runs"/run_id
-        state={"run_id":run_id,"folder":str(folder),"config":settings.model_dump(),"fingerprint":fingerprint(settings,prompt),
+        state={"run_id":run_id,"mode":"monitor" if settings.monitoring.enabled else operation,"folder":str(folder),"config":settings.model_dump(),"fingerprint":fingerprint(settings,prompt),
                "scheduled":os.getenv("JOB_SEEKER_SCHEDULED")=="true","cloud_envelope":os.getenv("GITHUB_ACTIONS")=="true","status":"running","started_at":datetime.now(timezone.utc).isoformat(),"queries_done":[],"queue":[],
                "pages_done":[],"findings":[],"rejected_findings":[],"limitations":[],"model_calls":0,"usage":[],
                "searches":0,"fetches":0,"sources":{},"events":[],"allowed":[],"cache":{}}
@@ -277,7 +279,8 @@ def _run(config,resume,on_checkpoint=None,control=None):
             small={k:page.get(k) for k in ("url","source_id","text","closed_marker","links")}
             small["text"]=small["text"][:14000]
             if adaptive:
-                small['links'] = sorted(small.get('links') or [],key=navigation_rank)[:12]
+                from .company_discovery import company_rank
+                small['links'] = sorted(small.get('links') or [],key=company_rank if state.get('mode')=='company' else navigation_rank)[:12]
                 for link in reversed(navigation_candidates(page,settings.vacancy.navigation_links)):
                     if link not in {x['url'] for x in state['queue']}:
                         state['navigation_progress'] = state.get('navigation_progress',0)+1
@@ -324,7 +327,7 @@ def _run(config,resume,on_checkpoint=None,control=None):
                         registry.save_corroboration(checked_result(ident,pair,decision,settings.corroboration.publishers))
                     except RunStopped:raise
                     except Exception as exc:state['limitations'].append('Signal corroboration unavailable: '+type(exc).__name__)
-            if assessment.source_type=="index":
+            if state.get("mode")=="company" or assessment.source_type=="index":
                 # A general aggregator is a discovery source, never an employer lead.
                 assessment.findings=[]
             good,bad=validate_findings(Report(findings=assessment.findings,limitations=assessment.limitations),sources.records)
@@ -436,6 +439,7 @@ def _run(config,resume,on_checkpoint=None,control=None):
     result={k:state[k] for k in ("run_id","status","started_at","rejected_findings","usage","fingerprint")}
     result["competitor_leads"]=state["competitor_leads"]
     result["signals"]=state["signals"];result["rejected_signals"]=state["rejected_signals"]
+    result["mode"]=state.get("mode","discovery")
     result["stop_reason"]=state.get("stop_reason")
     result["research_trace"]=state.get("research_trace",[])
     result["scheduled"]=state.get("scheduled",False)

@@ -70,7 +70,7 @@ export default {
       if(u.pathname==='/api/run' && request.method==='POST') {
         if(!env.GITHUB_TOKEN) return reply({error:'GitHub dispatch not configured'},409);
         const body=await request.json(),mode=body.mode||'discovery';
-        if(!['discovery','monitor','notifications','backup','restore','diagnostics','maintenance','boards'].includes(mode))return reply({error:'Invalid research mode'},400);
+        if(!['discovery','company','monitor','notifications','backup','restore','diagnostics','maintenance','boards'].includes(mode))return reply({error:'Invalid research mode'},400);
         const inputs={mode};if(mode==='restore'){if(!/^[a-f0-9]{32}$/.test(body.backup_id))return reply({error:'Invalid backup ID'},400);inputs.backup_id=body.backup_id}
         const response=await fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/research.yml/dispatches`,{
           method:'POST',headers:{Authorization:`Bearer ${env.GITHUB_TOKEN}`,'User-Agent':'Job-Seeker','Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:env.GITHUB_REF,inputs})});

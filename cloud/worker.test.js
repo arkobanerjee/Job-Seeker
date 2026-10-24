@@ -19,6 +19,12 @@ test('board observations dispatch a distinct workflow mode',async()=>{
  globalThis.fetch=async(url,options)=>{assert.deepEqual(JSON.parse(options.body).inputs,{mode:'boards'});return new Response(null,{status:204})};
  try{assert.equal((await worker.fetch(req('/api/run','POST',{mode:'boards'}),e)).status,200)}finally{globalThis.fetch=old}
 });
+
+test('company discovery dispatches its own workflow mode',async()=>{
+ const e=env();e.GITHUB_TOKEN='dispatch';e.GITHUB_REPOSITORY='owner/repo';e.GITHUB_REF='main';const old=globalThis.fetch;
+ globalThis.fetch=async(url,options)=>{assert.deepEqual(JSON.parse(options.body).inputs,{mode:'company'});return new Response(null,{status:204})};
+ try{assert.equal((await worker.fetch(req('/api/run','POST',{mode:'company'}),e)).status,200)}finally{globalThis.fetch=old}
+});
 test('cold evidence archives are private, immutable and idempotent',async()=>{
  const e=env(),id='d'.repeat(32),data='synthetic archive';
  const upload=body=>new Request('https://jobs.example/api/run-archive/'+id,{method:'PUT',headers:{Authorization:'Bearer test-only','Content-Length':String(body.length)},body});

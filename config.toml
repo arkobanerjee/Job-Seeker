@@ -53,6 +53,17 @@ queries = [
 [notifications]
 telegram = false
 
+[company_discovery]
+# Manual operation; shared cumulative spending gate still applies.
+run_usd = 0.25
+max_searches = 10
+max_pages = 24
+max_model_calls = 32
+lookback_months = 6
+include_older = false
+focus = "Germany Europe AI RAG data engineering"
+themes = ["funding", "expansion", "product", "deployment", "team"]
+
 [monitoring]
 schedule_enabled = false
 daily_run_usd = 0.25

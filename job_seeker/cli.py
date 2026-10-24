@@ -46,7 +46,7 @@ def demo():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["demo", "plan", "research", "review", "run", "resume", "dashboard", "check", "preview-prompt", "import-history"])
+    parser.add_argument("command", choices=["demo", "plan", "research", "review", "run", "company", "resume", "dashboard", "check", "preview-prompt", "import-history"])
     parser.add_argument("--config",type=Path)
     parser.add_argument("--port",type=int,default=8765)
     parser.add_argument("--run-id")
@@ -74,10 +74,10 @@ def main():
         from .catalog import Catalog
         catalog=Catalog(ROOT/"runs"/"catalog.sqlite3"); catalog.import_runs(ROOT/"runs")
         print(f"Imported {len(catalog.list())} unique roles/companies"); return
-    if args.command in ("run","resume"):
+    if args.command in ("run","company","resume"):
         if args.command=="resume" and not args.run_id: parser.error("resume requires --run-id")
         from .runner import run
-        try: folder,result=run(args.config,args.run_id if args.command=="resume" else None)
+        try: folder,result=run(args.config,args.run_id if args.command=="resume" else None,operation="company" if args.command=="company" else "discovery")
         except ValueError as exc: parser.error(str(exc))
         print(json.dumps({"folder":str(folder),"status":result["status"],"findings":len(result["findings"]),"budget":result["budget"]}))
         if result.get("error_type"): raise SystemExit(1)

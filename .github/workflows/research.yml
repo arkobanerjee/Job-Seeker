@@ -10,7 +10,7 @@ on:
         required: false
         default: discovery
         type: choice
-        options: [discovery, monitor, notifications, backup, restore, diagnostics, maintenance, boards]
+        options: [discovery, company, monitor, notifications, backup, restore, diagnostics, maintenance, boards]
       backup_id:
         description: Retained backup ID for explicit research restore
         required: false
@@ -71,6 +71,8 @@ jobs:
             python -m job_seeker.cloud restore --backup-id "$BACKUP_ID"
           elif [ "$RESEARCH_MODE" = "notifications" ]; then
             python -m job_seeker.cloud notifications
+          elif [ "$RESEARCH_MODE" = "company" ]; then
+            python -m job_seeker.cloud company
           elif [ "$RESEARCH_MODE" = "monitor" ]; then
             python -m job_seeker.cloud monitor
           else

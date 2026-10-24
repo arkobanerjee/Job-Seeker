@@ -98,7 +98,7 @@ def bootstrap():
         cloud.sync()
         cloud.settings()
 
-def run_cloud(resume=None,monitor=False,scheduled=False):
+def run_cloud(resume=None,monitor=False,scheduled=False,operation="discovery"):
     # Only the serialized GitHub workflow may own this state. No parallel local writes.
     if os.getenv('GITHUB_ACTIONS')!='true': raise ValueError('Cloud worker runs through the serialized GitHub Actions workflow')
     if not resume: os.environ['JOB_SEEKER_SCHEDULED']='true' if scheduled else 'false'
@@ -108,6 +108,8 @@ def run_cloud(resume=None,monitor=False,scheduled=False):
         if name not in ('config.toml','prompts/master.md','private/profile.md','private/resume.md') or not isinstance(content,str): raise ValueError('Unexpected cloud settings')
         target=ROOT/name; target.parent.mkdir(exist_ok=True,parents=True); target.write_text(content,encoding='utf-8')
     settings,_=load_settings()
+    from .company_discovery import operation_settings
+    if not resume: settings=operation_settings(settings,operation)
     if scheduled:
         from .monitoring import scheduled_cap
         from .questions import Questions
@@ -150,7 +152,7 @@ def run_cloud(resume=None,monitor=False,scheduled=False):
     for ident,decision in cloud.request('decisions').items():
         if ident in known: catalog.decide(ident,decision['decision'],decision.get('note',''))
     from .runner import run
-    folder,result=run(resume=resume,on_checkpoint=cloud.sync,control=lambda ident:cloud.request("control/"+ident).get("action","run"))
+    folder,result=run(resume=resume,operation=operation,on_checkpoint=cloud.sync,control=lambda ident:cloud.request("control/"+ident).get("action","run"))
     cloud.sync()
     if scheduled: cloud.request('monitor-status','PUT',{'status':result['status'],'run_id':result['run_id']})
     return folder,result
@@ -245,7 +247,7 @@ def retry_notifications():
 
 def main():
     import argparse
-    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','monitor','scheduled','notifications','backup','restore','diagnostics','maintenance','boards','scheduled-boards','settings']); parser.add_argument('--run-id'); parser.add_argument('--backup-id')
+    parser=argparse.ArgumentParser(); parser.add_argument('command',choices=['bootstrap','run','company','monitor','scheduled','notifications','backup','restore','diagnostics','maintenance','boards','scheduled-boards','settings']); parser.add_argument('--run-id'); parser.add_argument('--backup-id')
     args=parser.parse_args()
     if args.command in ('boards','scheduled-boards'):print(json.dumps(observe_cloud_boards(args.command=='scheduled-boards')))
     elif args.command=='maintenance':print(json.dumps(maintain_cloud()))
@@ -262,7 +264,7 @@ def main():
         settings,base=load_settings(); render_prompt(settings,base)
         Cloud().settings(); print('Private cloud settings updated for subsequent runs')
     else:
-        _,result=run_cloud(args.run_id,monitor=args.command in ('monitor','scheduled'),scheduled=args.command=='scheduled')
+        _,result=run_cloud(args.run_id,monitor=args.command in ('monitor','scheduled'),scheduled=args.command=='scheduled',operation='company' if args.command=='company' else 'discovery')
         print(json.dumps({'run_id':result.get('run_id'),'status':result['status'],'findings':len(result['findings'])}))
         if result.get('error_type'): raise SystemExit(1)
 
