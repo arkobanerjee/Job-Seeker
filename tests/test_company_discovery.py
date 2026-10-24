@@ -38,7 +38,7 @@ class CompanyDiscoveryTests(unittest.TestCase):
         self.assertEqual(operation_settings(settings,'discovery').model.max_output_tokens,4000)
 
     def test_calendar_window_and_explicit_backfill(self):
-        settings,_=load_settings()
+        settings,_=load_settings();settings.company_discovery.startup_source_queries=0
         seeds=seed_queries(settings,'2026-08-31T08:00:00+00:00')
         self.assertEqual(len(seeds),5)
         self.assertTrue(all('after:2026-02-28' in s['query'] for s in seeds))
@@ -71,9 +71,31 @@ class CompanyDiscoveryTests(unittest.TestCase):
                 _,result=run(root/'config.toml',operation='company')
             self.assertEqual(result['mode'],'company')
             self.assertEqual(result['stop_reason'],'model_finished')
-            self.assertEqual(len(queries),5)
-            self.assertEqual(len(result['signals']),5)
+            self.assertEqual(len(queries),7)
+            self.assertEqual(len(result['signals']),7)
             self.assertEqual(result['findings'],[])
-            self.assertEqual(len([e for e in result['research_trace'] if e['type']=='signal_validation']),5)
+            self.assertEqual(len([e for e in result['research_trace'] if e['type']=='signal_validation']),7)
             self.assertIn('investigate',next(e['outcome'] for e in result['research_trace'] if e['type']=='signal_validation'))
-            self.assertTrue(all('after:' in q for q in queries))
+            self.assertTrue(all('after:' in q for q in queries if not q.startswith('site:ycombinator.com/companies')))
+
+
+class StartupSourceTests(unittest.TestCase):
+    def test_targeted_sources_share_the_existing_company_query_plan(self):
+        settings,_=load_settings();seeds=seed_queries(settings,'2026-10-24T08:00:00+00:00')
+        self.assertEqual(len(seeds),7)
+        self.assertTrue(seeds[0]['query'].startswith('site:ycombinator.com/companies '))
+        self.assertNotIn('after:',seeds[0]['query'])
+        self.assertIn('after:2026-04-24',seeds[1]['query'])
+        self.assertEqual(seeds,seed_queries(settings,'2026-10-24T08:00:00+00:00'))
+        tomorrow=seed_queries(settings,'2026-10-25T08:00:00+00:00')
+        self.assertNotEqual(seeds[1]['theme'],tomorrow[1]['theme'])
+        settings=operation_settings(settings,'company')
+        state={'started_at':'2026-10-24T08:00:00+00:00','searches':9,'attempted_queries':[]}
+        decision=ResearchDecision(action='research',explanation='Research companies')
+        self.assertEqual(len(cover_themes(decision,settings,state).queries),1)
+    def test_source_query_count_can_be_disabled_and_operators_are_rejected(self):
+        settings,_=load_settings();settings.company_discovery.startup_source_queries=0
+        self.assertEqual(len(seed_queries(settings,'2026-10-24T08:00:00+00:00')),5)
+        from job_seeker.settings import CompanyDiscoverySettings
+        for source in ['localhost','https://example.com','example.com OR site:evil.com','127.0.0.1']:
+            with self.assertRaises(ValueError):CompanyDiscoverySettings(startup_sources=[source])

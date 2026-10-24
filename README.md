@@ -369,3 +369,9 @@ The public configuration enables a pre-search preference check and at most two
 new questions per run. Answers are remembered privately and reused across runs;
 monitoring stays quiet. Enable the section separately in existing private cloud
 settings after deployment. See the [user guide](docs/USER_GUIDE.md) for controls.
+
+
+Job decisions now update immediately: Applied and Dismissed leave the default
+To review queue and remain accessible through application-status filters. Company
+discovery includes bounded, configurable startup/funding source searches. See the
+[user guide](docs/USER_GUIDE.md) for behavior, source evidence and limits.
