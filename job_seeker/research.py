@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from .budget import Ledger, BudgetExceeded
 from .sources import SourceTools, ServiceFailure, normalized
+from .context import application_form,title_only
 
 ROOT=Path(__file__).resolve().parent.parent
 
@@ -50,6 +51,8 @@ def validate_findings(report, records):
         if record.get("http_status")!=200: reason="No fetched page evidence"
         elif len(quote)<30 or quote.casefold() not in text.casefold(): reason="Quote does not match retrieved text"
         elif f.kind=="vacancy" and (len(title)<5 or title.casefold() not in text.casefold()): reason="Vacancy title is not present in page text"
+        elif f.kind=='vacancy' and application_form(record):reason='Application form is not an independently assessed vacancy description'
+        elif f.kind=='vacancy' and title_only(record,title,f.company):reason='Only a title was retrieved; job description and requirements unavailable'
         if reason:
             rejected.append({**f.model_dump(),"url":key,"reason":reason,"verification":"unverified"}); continue
         unique=(key,title.casefold())

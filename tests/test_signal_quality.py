@@ -6,6 +6,10 @@ from job_seeker.registry import Registry
 
 
 class SignalQualityTests(unittest.TestCase):
+    def test_explicit_employee_headcount_increase_is_expansion(self):
+        good,bad=self.validate("The transaction will increase ExampleCorp's employee headcount to 100 for its RAG platform.",event='expansion')
+        self.assertEqual(bad,[])
+        self.assertEqual(good[0]['qualification_status'],'qualified')
     def validate(self,quote,event='funding',terms=None,background='Production RAG and data analytics experience'):
         signal=Signal(company='ExampleCorp',title='Company announcement',kind='company',source_id='one',evidence_quote=quote,
                       relevance='Production retrieval matches the candidate RAG experience.',event_type=event,profile_terms=['RAG'] if terms is None else terms)

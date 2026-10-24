@@ -107,7 +107,7 @@ and serialized worker, so they cannot bypass each other's reservations.
 
 Tune `[company_discovery]` in the configuration: `run_usd`, `max_searches`,
 `max_pages`, `max_model_calls`, `focus`, `themes`, `lookback_months` and
-`include_older`. The default company ceiling is $0.25 and never exceeds the
+`include_older`. The default company ceiling is $0.40 and never exceeds the
 configured general run-dollar ceiling. Smaller allowances can stop before all
 themes are searched; query/page/model limits are ceilings, not promised usage.
 
@@ -179,3 +179,34 @@ The dashboard limits trace size and states how many earlier events were omitted.
 Full saved receipts remain in private checkpoint/result evidence (and archived
 run evidence after archival). **What was searched and read** still supplies the
 separate saved query/source summary for older runs.
+
+
+## Acceptance configuration and remaining rollout
+
+The live dashboard now includes the company operation, evidence groups and
+research timeline. Runner fixes discovered during acceptance require their PR
+to be merged before the next GitHub Actions run uses them. Adaptive vacancy
+research remains opt-in: the small live comparison has not established improved
+useful-job yield. Company discovery is a separate explicit manual operation.
+
+After the acceptance fixes are merged, `[adaptive] max_output_tokens` controls
+assessment/planning output headroom (default 8,000). `[company_discovery] run_usd`
+defaults to $0.40. This is a maximum conservative reservation, not an expected
+invoice amount. Existing smaller per-run and cumulative gates still win. No
+automatic budget reset or additional scheduled company run is added.
+
+Long pages and link lists are bounded for model input. If relevant source text
+was omitted, a vacancy proposal remains for manual review. Output-token
+exhaustion is recorded as a page-level assessment failure; the worker continues
+with other evidence and does not invent a finding for that page.
+
+Evaluation artifacts remain in private/comparison/adaptive/ and never populate
+your real queues. A new manual production run collects its own evidence.
+
+
+The final larger vacancy trial found six candidates with description evidence
+versus one from configured queries; three were stronger/possible matches and
+three were stretches. Results vary and require review. Title-only JavaScript
+pages and application forms are retained as unverified evidence rather than
+promoted as assessed vacancies. Browser rendering is not added by this change.
+See adaptive-evaluation.md for evaluation limits and rollout status.

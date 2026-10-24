@@ -25,6 +25,10 @@ unknown. Search date operators are hints, not verified publication-date filters.
 After theme seed queries, refine based on results, verify identity/claims and
 follow observed relevant article/product/company links. No minimum card quota.
 Return company signals, not vacancy findings. Explain remaining coverage gaps.
+Never refine into personal vacancy searches or ATS posting queries. Keep funding,
+expansion, products and deployments as the search objective. Quote an excerpt
+containing the company name AND the concrete event wording. Prefer source event
+pages over careers navigation. A feature list does not establish a product launch.
 """
 
 
@@ -43,6 +47,8 @@ def operation_settings(settings,operation):
         settings.monitoring.enabled=False
         settings.signals.enabled=True
         settings.competitors.enabled=False
+    if settings.adaptive.enabled and not settings.monitoring.enabled:
+        settings.model.max_output_tokens=settings.adaptive.max_output_tokens
     return settings
 
 
@@ -71,6 +77,9 @@ def company_memory(settings,state):
 
 def cover_themes(decision,settings,state):
     if decision.action=='ask_user':return decision
+    kept=[q for q in decision.queries if not re.search(r'\b(vacanc\w*|careers?|job postings?|job openings?|individual jobs?)\b|site:(?:jobs\.|job-boards\.|boards\.greenhouse)',q.query,re.I)]
+    if len(kept)!=len(decision.queries):
+        decision=decision.model_copy(update={'queries':kept,'coverage_gaps':(decision.coverage_gaps+['Vacancy-focused query omitted in company mode'])[:8]})
     pending=[s for s in seed_queries(settings,state['started_at']) if s['query'] not in state.get('attempted_queries',[])]
     capacity=min(settings.adaptive.queries_per_round,settings.limits.max_searches-state.get('searches',0))
     if not pending or capacity<=0:return decision

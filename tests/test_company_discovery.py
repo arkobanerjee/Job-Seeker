@@ -5,7 +5,7 @@ from unittest.mock import patch
 from test_product import setup
 from test_prototype import finding
 from job_seeker.settings import load_settings
-from job_seeker.company_discovery import operation_settings,seed_queries,company_memory
+from job_seeker.company_discovery import operation_settings,seed_queries,company_memory,cover_themes
 from job_seeker.runner import run,Assessment
 from job_seeker.adaptive import ResearchDecision
 from job_seeker.signals import Signal
@@ -13,18 +13,29 @@ from job_seeker.sources import SourceTools
 
 
 class CompanyDiscoveryTests(unittest.TestCase):
+    def test_company_refinement_cannot_drift_into_vacancy_query(self):
+        settings,_=load_settings()
+        state={'started_at':'2026-10-24T08:00:00+00:00','searches':5}
+        state['attempted_queries']=[s['query'] for s in seed_queries(settings,state['started_at'])]
+        decision=ResearchDecision(action='research',explanation='Refine',queries=[{'track':'ai','query':'AI Engineer Germany careers individual vacancy'},{'track':'ai','query':'Germany RAG product launch announcement'}])
+        checked=cover_themes(decision,settings,state)
+        self.assertEqual([q.query for q in checked.queries],['Germany RAG product launch announcement'])
+        self.assertIn('Vacancy-focused query omitted in company mode',checked.coverage_gaps)
     def test_separate_limits_do_not_mutate_vacancy_settings(self):
         settings,_=load_settings()
         company=operation_settings(settings,'company')
         self.assertEqual(settings.limits.max_searches,6)
         self.assertEqual(company.limits.max_searches,10)
         self.assertEqual(company.limits.max_pages,24)
-        self.assertEqual(company.limits.run_usd,0.25)
+        self.assertEqual(company.limits.run_usd,0.40)
+        self.assertEqual(company.model.max_output_tokens,8000)
         self.assertTrue(company.adaptive.enabled)
         self.assertFalse(settings.adaptive.enabled)
         self.assertFalse(company.monitoring.enabled)
         settings.limits.run_usd=0.1
         self.assertEqual(operation_settings(settings,'company').limits.run_usd,0.1)
+        settings.adaptive.enabled=True;settings.monitoring.enabled=True
+        self.assertEqual(operation_settings(settings,'discovery').model.max_output_tokens,4000)
 
     def test_calendar_window_and_explicit_backfill(self):
         settings,_=load_settings()

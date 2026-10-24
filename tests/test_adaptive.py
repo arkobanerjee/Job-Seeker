@@ -31,6 +31,10 @@ class AdaptiveTests(unittest.TestCase):
         self.assertIsNone(stop_reason(state,AdaptiveSettings(),Limits(),now))
         state['fetches'] = 12
         self.assertEqual(stop_reason(state,AdaptiveSettings(),Limits(),now), 'research_resources_exhausted')
+        state.update(sources={'https://example.com/last':{}},queue=[{'url':'https://example.com/last'}],pages_done=[])
+        self.assertIsNone(stop_reason(state,AdaptiveSettings(),Limits(),now))
+        state['pages_done']=['https://example.com/last']
+        self.assertEqual(stop_reason(state,AdaptiveSettings(),Limits(),now),'research_resources_exhausted')
 
     def test_finish_cannot_smuggle_actions(self):
         decision = ResearchDecision(action='finish', explanation='Enough evidence', queries=[{'track':'ai','query':'extra'}])

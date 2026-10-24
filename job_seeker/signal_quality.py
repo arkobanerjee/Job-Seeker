@@ -3,8 +3,8 @@ import re
 
 EVENTS={
     'funding':('Reported funding',r'\b(raised|secured|funding|financing|investment|series [abc])\b'),
-    'expansion':('Reported business expansion',r'\b(expand\w*|new office|opened|opening|new market)\b'),
-    'hiring':('Explicit hiring / team growth',r'\b(hiring|recruiting|growing our team|expand\w* team|team expansion)\b'),
+    'expansion':('Reported business expansion',r'\b(expand\w*|new office|opened|opening|new market|increas\w* .{0,60}headcount|headcount .{0,30}increas\w*)\b'),
+    'hiring':('Explicit hiring / team growth',r'\b(hiring|recruiting|grow\w* (?:our |this |the )?team|expand\w* (?:our |this |the )?team|team expansion)\b'),
     'product':('Relevant product launch',r'\b(launch\w*|released?|introduc\w*|general availability)\b'),
     'deployment':('Relevant deployment / case study',r'\b(deploy\w*|production|implemented|case study)\b'),
 }

@@ -26,6 +26,7 @@ max_stalled_rounds = 2
 planning_effort = "medium"
 assessment_effort = "medium"
 max_high_escalations = 2
+max_output_tokens = 8000
 
 [vacancy]
 # Search hints, not mandatory eligibility filters. Used by adaptive planning.
@@ -55,7 +56,7 @@ telegram = false
 
 [company_discovery]
 # Manual operation; shared cumulative spending gate still applies.
-run_usd = 0.25
+run_usd = 0.40
 max_searches = 10
 max_pages = 24
 max_model_calls = 32

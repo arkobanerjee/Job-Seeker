@@ -22,6 +22,7 @@ class AdaptiveSettings(Strict):
     planning_effort: Literal['medium', 'high'] = 'medium'
     assessment_effort: Literal['medium', 'high'] = 'medium'
     max_high_escalations: int = Field(default=2, ge=0, le=4)
+    max_output_tokens: int = Field(default=8000,ge=1000,le=8000)
 
 
 class ModelSettings(Strict):
@@ -79,7 +80,7 @@ class Search(Strict):
     queries: list[Query] = Field(min_length=1, max_length=30)
 
 class CompanyDiscoverySettings(Strict):
-    run_usd: float = Field(default=0.25,gt=0,le=2,allow_inf_nan=False)
+    run_usd: float = Field(default=0.40,gt=0,le=2,allow_inf_nan=False)
     max_searches: int = Field(default=10,ge=1,le=20)
     max_pages: int = Field(default=24,ge=1,le=40)
     max_model_calls: int = Field(default=32,ge=1,le=50)
