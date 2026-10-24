@@ -123,3 +123,20 @@ their existing limits. No automatic company schedule is added.
 
 Company activity does not establish a suitable opening. Stronger qualification
 labels and combined evidence cards are the next implementation steps.
+
+
+### Company evidence labels and review
+
+Company opportunities shows counts for qualified opportunities, investigation
+leads and rejected evidence. Expand **Investigation and rejected evidence** to
+inspect weak or historical signals, competitor relationships, board activity and
+failed quote/source claims. Each held record includes its review reason. Your
+notes and decisions remain available; changing a decision does not change its
+evidence qualification.
+
+A qualified signal passed quote, company-name, event-wording and shared-profile-
+term checks. It still requires judgment: these checks do not independently prove
+the event, publisher ownership, candidate fit or a suitable vacancy. Labels
+separate funding, expansion, hiring/team growth, products and deployments.
+Missing event dates display Unknown. Historical records remain in investigation
+until assessed under the new rules; no paid reprocessing happens automatically.

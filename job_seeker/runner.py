@@ -168,7 +168,7 @@ def _run(config,resume,on_checkpoint=None,control=None,operation="discovery"):
         write_json(folder/"checkpoint.json",state)
         write_json(folder/"evidence.json",{"sources":sources.records,"events":sources.events})
         registry.ingest(state["run_id"],state["findings"],sources.records)
-        registry.ingest_signals(state["signals"])
+        registry.ingest_signals(state["signals"],state["rejected_signals"])
         registry.ingest_competitors(state["competitor_leads"])
         if on_checkpoint: on_checkpoint()
     sources=SourceTools(ledger,persist,settings.limits.max_searches,settings.limits.max_pages)
@@ -306,7 +306,7 @@ def _run(config,resume,on_checkpoint=None,control=None,operation="discovery"):
                     except ValueError: state["limitations"].append("Question saved; Telegram delivery failed")
                 persist(); return {"phase":"waiting_user"}
             state.pop("question_id",None)
-            signal_good,signal_bad=validate_signals(assessment.signals,page,state['run_id'])
+            signal_good,signal_bad=validate_signals(assessment.signals,page,state['run_id'],prompt)
             for signal in signal_good:signal['discovery_trails']=discovery_trails(signal['url'],sources.cache,sources.records,state['run_id'])
             state['signals'].extend(signal_good);state['rejected_signals'].extend(signal_bad)
             if settings.corroboration.enabled and signal_good:

@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/dedicated-company-discovery'
+BRANCH='codex/company-evidence-qualification'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -30,13 +30,13 @@ def main():
         parent=head.json()['object']['sha'] if exists else api('GET','/git/ref/heads/main')['object']['sha']
         tree_base=api('GET','/git/commits/'+parent)['tree']['sha']
         tree=api('POST','/git/trees',{'base_tree':tree_base,'tree':entries})
-        commit=api('POST','/git/commits',{'message':'Add dedicated bounded company discovery operation','tree':tree['sha'],'parents':[parent]})
+        commit=api('POST','/git/commits',{'message':'Qualify company evidence and retain investigation leads','tree':tree['sha'],'parents':[parent]})
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body='Adds a dedicated manual company-discovery operation connected to dashboard, authenticated dispatch, GitHub workflow and local/cloud CLI. Uses independent search/page/model ceilings under the existing shared spending gate; preserves saved configuration on resume. Covers funding, expansion, product, deployment and team seed queries before refinement. Supports a six-calendar-month query-date hint and explicit older-history option. Company runs save signals while suppressing vacancy findings.\n\nValidation: 126 Python tests and Node backend/tab tests, including independent limits, calendar/backfill behavior, all-theme collection without job-queue pollution and distinct workflow dispatch. No paid live research, production settings update or automatic company schedule. Evidence-strength filtering and aggregated cards remain the next steps.'
-        pr=prs[0] if prs else api('POST','/pulls',{'title':'Add dedicated bounded company discovery operation','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Add dedicated bounded company discovery operation','body':body})
+        body='Adds event-specific evidence labels and conservative company-signal qualification. Exact source/quote validation is followed by company-in-quote, event wording, uncertainty and shared-profile-term checks. Weak/legacy signals remain investigation leads; invalid source claims persist with rejection reasons in a durable registry table. The dashboard main queue shows qualified signals and retains investigation/rejected evidence in a collapsed section while preserving decision IDs.\n\nValidation: 131 Python tests and 25 Node backend/dashboard tests covering concrete events, biographies, negation/speculation, missing relevance, unsupported quotes, registry persistence and actual dashboard grouping. Lexical gates are conservative assessments, not independent verification; live quality evaluation and multi-evidence aggregation remain pending. No paid research or live deployment performed.'
+        pr=prs[0] if prs else api('POST','/pulls',{'title':'Qualify company evidence and retain investigation leads','head':BRANCH,'base':'main','body':body,'draft':True})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Qualify company evidence and retain investigation leads','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

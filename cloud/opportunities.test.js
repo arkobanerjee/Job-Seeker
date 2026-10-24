@@ -11,6 +11,17 @@ test('stable company identities survive new evidence text',async()=>{
  const a=await companyOpportunities({signals:[signal]});const b=await companyOpportunities({signals:[{...signal,evidence_quote:'Updated quote'}]});
  assert.equal(a[0].id,b[0].id);assert.match(a[0].uncertainty,/No suitable vacancy/);
 });
+
+test('qualification status separates historical, weak, supported and rejected signals',async()=>{
+ const signal={company:'Example',url:'https://example.com/news',kind:'product',title:'Launch',evidence_quote:'Launch quote'};
+ const rows=await companyOpportunities({signals:[signal,{...signal,qualification_status:'qualified',evidence_strength:'Relevant product launch',qualification_reasons:[]}],rejected_signals:[{...signal,reason:'Quote absent from source'}]});
+ assert.equal(rows.length,2);
+ assert.equal(rows.find(r=>r.type==='signal').qualification_status,'qualified');
+ assert.equal(rows.find(r=>r.type==='rejected_signal').qualification_status,'rejected');
+ const legacy=await companyOpportunities({signals:[signal]});
+ assert.equal(legacy[0].qualification_status,'investigate');
+ assert.match(legacy[0].qualification_reasons[0],/Historical/);
+});
 test('company actions persist separately and reject unknown IDs',async()=>{
  const data=new Map([['registry/latest.json',JSON.stringify({competitors:[{company:'Example',seed_company:'Other',url:'https://example.com',evidence_quote:'An alternative'}]})]]);
  const env={STATE:{get:async key=>data.has(key)?{json:async()=>JSON.parse(data.get(key))}:null,put:async(key,value)=>data.set(key,value)}};
