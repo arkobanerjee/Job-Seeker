@@ -2,6 +2,7 @@
 from datetime import date
 from pydantic import BaseModel,Field
 from typing import Literal
+from .signal_quality import qualify_signal
 
 class Signal(BaseModel):
     company: str = Field(min_length=1,max_length=200)
@@ -10,9 +11,11 @@ class Signal(BaseModel):
     source_id: str
     evidence_quote: str = Field(min_length=30,max_length=1500)
     relevance: str = Field(max_length=1000)
+    event_type: Literal['funding','expansion','hiring','product','deployment','technical_interest','unknown'] = Field(default='unknown',description='Specific event explicitly supported by evidence_quote, not an inference of hiring from funding. Generic commentary/author biographies are unknown or technical_interest.')
+    profile_terms: list[str] = Field(default_factory=list,max_length=5,description='Copy up to five relevant skill/product terms present in BOTH supplied candidate background and source. Do not invent experience.')
     event_date: str | None = Field(default=None,description='ISO date only when explicitly present in supplied text; otherwise null. Never use retrieval date as event date.')
 
-def validate_signals(signals,page,run_id):
+def validate_signals(signals,page,run_id,background=''):
     good=[];bad=[];text=' '.join(page.get('text','').split()).casefold()
     for signal in signals:
         reason=None
@@ -20,13 +23,13 @@ def validate_signals(signals,page,run_id):
         elif ' '.join(signal.evidence_quote.split()).casefold() not in text:reason='Quote absent from source'
         elif signal.company.casefold() not in text:reason='Company absent from source'
         if reason:
-            bad.append({'title':signal.title,'reason':reason});continue
+            bad.append({**signal.model_dump(),'url':page.get('url'),'run_id':run_id,'observed_at':page.get('observed_at'),'reason':reason,'qualification_status':'rejected'});continue
         event_date=signal.event_date
         if event_date:
             try:date.fromisoformat(event_date)
             except ValueError:event_date=None
             if event_date and event_date not in page['text']:event_date=None
-        good.append({**signal.model_dump(),'event_date':event_date,'url':page['url'],'observed_at':page.get('observed_at'),'run_id':run_id,
+        good.append({**signal.model_dump(),**qualify_signal(signal,page,background),'event_date':event_date,'url':page['url'],'observed_at':page.get('observed_at'),'run_id':run_id,
             'classification':'Company signal; no matching vacancy established','verification':'Quote and company text checked; signal interpretation and source ownership require review'})
     return good,bad
 

@@ -20,3 +20,17 @@ test('opportunity tabs switch panels and job filters without resetting on refres
  assert.equal(nodes.get('companyOpportunities').hidden,true);
  assert.equal(nodes.get('search').hidden,false);
 });
+
+test('weak and rejected company cards render in collapsed investigation section',async()=>{
+ const nodes=new Map();
+ const make=tag=>({tag,children:[],hidden:false,attributes:{},append(...items){this.children.push(...items)},replaceChildren(){this.children=[]},setAttribute(k,v){this.attributes[k]=v}});
+ const document={createElement:make,getElementById(id){if(!nodes.has(id))nodes.set(id,make('div'));return nodes.get(id)}};
+ const rows=['qualified','investigate','rejected'].map(status=>({company:'Example',title:status,label:status,qualification_status:status,decision:{status:'new',note:''}}));
+ const context=vm.createContext({document,fetch:async()=>({ok:true,json:async()=>rows})});
+ vm.runInContext(page.split('<script>')[1].split('</script>')[0],context);
+ await vm.runInContext('renderCompanyOpportunities()',context);
+ const root=nodes.get('companyRows'),review=root.children.find(n=>n.tag==='details');
+ assert.equal(root.children.filter(n=>n.tag==='article').length,1);
+ assert.equal(review.children.filter(n=>n.tag==='article').length,2);
+ assert.equal(review.open,undefined);
+});
