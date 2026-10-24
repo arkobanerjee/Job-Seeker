@@ -44,6 +44,20 @@ class ModelSettings(Strict):
                 raise ValueError("Configured rates are below verified model prices")
         return self
 
+class ClarificationSettings(Strict):
+    enabled: bool = False  # Existing private configurations retain their behavior.
+    preflight: bool = True
+    max_questions_per_run: int = Field(default=2,ge=1,le=4)
+    reuse_answers: bool = True
+    preferences: dict[Literal['geography','seniority','internships','sponsorship','work_arrangement','compensation'],str] = Field(default_factory=dict)
+
+    @model_validator(mode='after')
+    def bounded_preferences(self):
+        if len(json.dumps(self.preferences,ensure_ascii=False).encode())>3000:raise ValueError('Explicit preferences exceed 3 KB')
+        if any(not v.strip() or len(v)>1000 for v in self.preferences.values()):
+            raise ValueError('Preference answers must contain 1–1000 characters')
+        return self
+
 class Limits(Strict):
     run_usd: float = Field(default=0.50, gt=0, le=2, allow_inf_nan=False)
     max_searches: int = Field(default=6, ge=1, le=20)
@@ -175,6 +189,7 @@ class CorroborationSettings(Strict):
 
 
 class Settings(Strict):
+    clarification: ClarificationSettings = Field(default_factory=ClarificationSettings)
     company_discovery: CompanyDiscoverySettings = Field(default_factory=CompanyDiscoverySettings)
     vacancy: VacancySettings = Field(default_factory=VacancySettings)
     adaptive: AdaptiveSettings = Field(default_factory=AdaptiveSettings)

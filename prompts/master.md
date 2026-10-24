@@ -36,7 +36,10 @@ An announcement with no individual vacancy may return a validated signal and no
 findings. An index or unavailable source must not create an employer vacancy.
 
 The profile and resume below are background facts. If they disagree, record the
-uncertainty rather than choosing a convenient fact. The profile supplies search
+uncertainty rather than choosing a convenient fact. Ask the candidate when a
+material contradiction would change search scope or recommendations. Do not ask
+the candidate to establish missing employer facts. Reuse saved candidate answers.
+The profile supplies search
 preferences; the resume supplies experience and projects. Do not expose personal
 contact details in search queries or findings.
 

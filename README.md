@@ -362,3 +362,10 @@ The cloud budget view retains its historical total with no cumulative ceiling.
 
 Earlier private planning and pilot files are preserved under
 `private/archive/initial-planning/`. Start with the [user guide](docs/USER_GUIDE.md).
+
+
+Proactive candidate clarification is configurable under `[clarification]`.
+The public configuration enables a pre-search preference check and at most two
+new questions per run. Answers are remembered privately and reused across runs;
+monitoring stays quiet. Enable the section separately in existing private cloud
+settings after deployment. See the [user guide](docs/USER_GUIDE.md) for controls.
