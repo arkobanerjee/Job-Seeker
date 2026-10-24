@@ -128,7 +128,7 @@ labels and combined evidence cards are the next implementation steps.
 ### Company evidence labels and review
 
 Company opportunities shows counts for qualified opportunities, investigation
-leads and rejected evidence. Expand **Investigation and rejected evidence** to
+leads and rejected evidence. Expand **Investigation, dismissed and rejected evidence** to
 inspect weak or historical signals, competitor relationships, board activity and
 failed quote/source claims. Each held record includes its review reason. Your
 notes and decisions remain available; changing a decision does not change its
@@ -140,3 +140,21 @@ the event, publisher ownership, candidate fit or a suitable vacancy. Labels
 separate funding, expansion, hiring/team growth, products and deployments.
 Missing event dates display Unknown. Historical records remain in investigation
 until assessed under the new rules; no paid reprocessing happens automatically.
+
+
+### Combined company cards and preserved notes
+
+Each company has one card. Expand its **evidence groups / source URLs** section
+to inspect each excerpt, qualification status, event date, source link and run
+reference. Matching excerpts are grouped as copies; several source URLs do not
+prove independent corroboration. Different excerpts remain separate for review.
+
+Company names merge after case/spacing normalization or through your configured
+aliases. Different companies sharing an ATS or publishing host are kept separate.
+New evidence does not change the company's card ID or reset your decision.
+
+Earlier notes from individual-source cards or configured aliases appear under
+**Preserved earlier notes and decisions**. The newest earlier decision is used
+until you save a company-level decision. Saving a new combined note retains the
+older notes in history. Dismissed companies stay in the collapsed review section
+when more evidence arrives; you can change their status to watch or investigate.

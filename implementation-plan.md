@@ -8,13 +8,13 @@ continues to use the existing ledger and approval gate.
 - [x] 3. Adapt vacancy research: role synonyms, location/skill coverage, careers and ATS navigation, stale/failed source recovery, separate vacancy/fit/eligibility assessments.
 - [x] 4. Add a dedicated company-discovery operation with independent bounded search/page settings, funding/expansion/product/deployment themes, six-month preference and optional older backfill.
 - [x] 5. Qualify company evidence: concrete event, identity, source/date, relevance and evidence-strength labels; retain weak/rejected leads with reasons outside the main queue.
-- [ ] 6. Aggregate one company card with multiple evidence items; preserve decisions/notes, suppress repeated announcements, show momentum coverage and competitor uncertainty.
+- [x] 6. Aggregate one company card with multiple evidence items; preserve decisions/notes, suppress repeated announcements, show momentum coverage and competitor uncertainty.
 - [ ] 7. Show chronological actions, queries, selected pages, replanning explanations, failures and coverage gaps in the dashboard; distinguish limited runs from exhausted research.
 - [ ] 8. Evaluate fixed failure cases and fresh searches in isolation against the current baseline; measure useful distinct leads, claim support, duplication, coverage, time and cost. Then deploy and verify the merged version.
 
 ## Current implementation scope
 
-Items 1–5 are implemented. Set `[adaptive] enabled=true` to opt in for
+Items 1–6 are implemented. Set `[adaptive] enabled=true` to opt in for
 new discovery runs. Existing cloud configs without this section keep the previous
 behavior. Do not enable scheduled adaptive research until isolated acceptance in
 item 8. Monitoring continues to revisit saved sources without the planner.
@@ -113,3 +113,35 @@ competitor and board-activity leads. Historical unclassified signals are not
 silently promoted. Existing stable decision IDs are preserved. For same-source
 collisions the qualified record takes precedence; full evidence aggregation is
 still item 6. Historical signals are not reprocessed through paid calls here.
+
+
+## Item 6: company evidence aggregation and decision continuity
+
+One stable card now represents a normalized company name, across signal,
+competitor, rejected-evidence and momentum routes. Configured aliases merge only
+when the registry identifies them as user-configured; different names are not
+merged by shared hosting, ATS domain or inferred similarity. Unidentified board
+activity remains separated by source URL. Name-based identity is labelled as
+unverified, not independent company-identity verification.
+
+Cards retain all evidence groups with status, label, quote, event date, source
+URLs, observation times, run references and uncertainty. Matching excerpts with
+matching evidence type/status/label/date are grouped as copies; all receipts
+remain inspectable. Tracking-only URL parameters are ignored for source counts.
+Different excerpts remain separate even if they might describe the same event;
+there is no speculative semantic deduplication or independent-source count claim.
+Momentum observations preserve their distinct observation periods.
+
+The card ID is independent of source additions, quotations and event labels.
+Prior per-source IDs remain readable/writable through the API. Earlier grouped
+alias IDs are also checked. Current company decisions take precedence; otherwise
+the most recent earlier decision is used. Every earlier note/status is exposed
+in preserved history rather than concatenated, overwritten or deleted. A newly
+saved company note does not erase old records. Dismissed companies remain in the
+collapsed review section when new evidence arrives.
+
+Validation covers evidence copies, multiple labels, shared-host non-merging,
+configured aliases, historical-ID migration, note preservation and actual page
+rendering of evidence/history/dismissed cards. No live deployment or paid research
+was performed. Chronological research trace UI is item 7; full comparison and
+production acceptance remain item 8.
