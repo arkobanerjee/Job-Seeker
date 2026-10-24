@@ -3,6 +3,7 @@ import json
 from .adaptive import ResearchDecision,research_loop
 from .questions import Questions,send_question
 from .sources import ServiceFailure
+from .tracing import record
 from .company_discovery import COMPANY_GUIDANCE,company_memory,cover_themes,company_rank
 from .vacancy import VACANCY_GUIDANCE,coverage_memory,navigation_rank
 
@@ -38,6 +39,9 @@ def run_adaptive(settings,state,prompt,policy,ledger,sources,root,*,invoke,enque
             for row in sorted(results,key=lambda r:(company_rank(r['url']) if state.get('mode')=='company' else navigation_rank(r['url']))): enqueue(row['url'],query['track'],route='company' if state.get('mode')=='company' else 'vacancy')
         else: state['limitations'].append('Search did not complete: '+results.get('error','unknown'))
         persist()
+        return {'result_count':len(results) if isinstance(results,list) else 0,
+                'urls':[r['url'] for r in results[:5]] if isinstance(results,list) else [],
+                'error':results.get('error') if isinstance(results,dict) else None}
 
     def inspect(urls,high):
         for url in reversed(urls):
@@ -52,12 +56,14 @@ def run_adaptive(settings,state,prompt,policy,ledger,sources,root,*,invoke,enque
         question = store.get(ident) if ident else store.ask(state['run_id'],state['fingerprint']+':planner:'+str(state['rounds']),decision.question,decision.explanation)
         state['planner_question_id'] = question['id']
         if question['answer'] is None:
+            record(state,'waiting_user',reason='Planner needs candidate preference')
             state['status'] = 'waiting_user'; persist()
             if settings.notifications.telegram:
                 try: send_question(store,question,on_checkpoint=persist)
                 except ValueError: state['limitations'].append('Question saved; Telegram delivery failed')
             return False
         state.setdefault('planner_answers',[]).append({'question':question['prompt'],'answer':question['answer']})
+        record(state,'answer_received',reason='Planner resumed with saved candidate answer')
         state.pop('planner_question_id',None); state['status']='running'; persist()
         return True
 

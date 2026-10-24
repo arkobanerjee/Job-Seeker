@@ -1,5 +1,6 @@
 """Dashboard summaries without prompts, page text or credentials."""
 import json
+from .tracing import trace_summary
 
 def run_history(root):
     rows=[]
@@ -14,8 +15,16 @@ def run_history(root):
             'mode':state.get('mode') or ('monitor' if state.get('config',{}).get('monitoring',{}).get('enabled') else 'discovery'),
             'scheduled':state.get('scheduled',False),'can_resume':bool(state.get('cloud_envelope')) and state['status'] in ('partial','failed','paused'),
             'observed_estimate_usd':result.get('budget',{}).get('observed_estimate_usd'),
-            'activity':activity_summary(state),'limitations':state.get('limitations',[])})
-    return sorted(rows,key=lambda x:x.get('started_at') or '',reverse=True)[:250]
+            'stop_reason':state.get('stop_reason'),'unread_pages':sum(x.get('url') not in state.get('pages_done',[]) for x in state.get('queue',[])),
+            'trace':trace_summary(state),'activity':activity_summary(state),'limitations':state.get('limitations',[])})
+    rows=sorted(rows,key=lambda x:x.get('started_at') or '',reverse=True)[:250]
+    remaining=600000
+    for row in rows:
+        trace=row['trace']
+        while trace['events'] and len(json.dumps(trace,ensure_ascii=False).encode())>remaining:
+            trace['events'].pop(0);trace['omitted_events']+=1
+        remaining=max(0,remaining-len(json.dumps(trace,ensure_ascii=False).encode()))
+    return rows
 
 
 def activity_summary(state):
