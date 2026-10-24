@@ -76,14 +76,14 @@ class CompanyDiscoveryTests(unittest.TestCase):
             self.assertEqual(result['findings'],[])
             self.assertEqual(len([e for e in result['research_trace'] if e['type']=='signal_validation']),7)
             self.assertIn('investigate',next(e['outcome'] for e in result['research_trace'] if e['type']=='signal_validation'))
-            self.assertTrue(all('after:' in q for q in queries if not q.startswith('site:ycombinator.com/companies')))
+            self.assertTrue(all('after:' in q for q in queries if not q.startswith('site:ycombinator.com inurl:companies')))
 
 
 class StartupSourceTests(unittest.TestCase):
     def test_targeted_sources_share_the_existing_company_query_plan(self):
         settings,_=load_settings();seeds=seed_queries(settings,'2026-10-24T08:00:00+00:00')
         self.assertEqual(len(seeds),7)
-        self.assertTrue(seeds[0]['query'].startswith('site:ycombinator.com/companies '))
+        self.assertTrue(seeds[0]['query'].startswith('site:ycombinator.com inurl:companies '))
         self.assertNotIn('after:',seeds[0]['query'])
         self.assertIn('after:2026-04-24',seeds[1]['query'])
         self.assertEqual(seeds,seed_queries(settings,'2026-10-24T08:00:00+00:00'))
@@ -99,3 +99,19 @@ class StartupSourceTests(unittest.TestCase):
         from job_seeker.settings import CompanyDiscoverySettings
         for source in ['localhost','https://example.com','example.com OR site:evil.com','127.0.0.1']:
             with self.assertRaises(ValueError):CompanyDiscoverySettings(startup_sources=[source])
+
+
+class StartupSearchToolIntegrationTests(unittest.TestCase):
+    def test_generated_directory_filter_is_accepted_by_real_search_validator(self):
+        import httpx
+        from job_seeker.budget import Ledger
+        settings,_=load_settings();query=seed_queries(settings,'2026-10-24T08:00:00+00:00')[0]['query']
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger=Ledger(Path(tmp)/'budget.sqlite3','test',.05);tools=SourceTools(ledger,lambda:None)
+            response=httpx.Response(200,json={'results':[]})
+            with patch('os.environ',{'TAVILY_API_KEY':'fake'}),patch('httpx.Client') as client:
+                client.return_value.__enter__.return_value.post.return_value=response
+                result=tools.search(query)
+            self.assertEqual(result,[])
+            self.assertEqual(tools.searches,1)
+            self.assertEqual(ledger.summary()['reserved_usd'],.008)
