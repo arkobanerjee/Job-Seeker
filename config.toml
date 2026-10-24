@@ -15,6 +15,18 @@ max_pages = 12
 max_model_calls = 16
 context_bytes = 60000
 
+[adaptive]
+# Opt in after isolated acceptance. Existing cloud configs default to disabled.
+enabled=false
+max_rounds = 4
+queries_per_round = 3
+pages_per_round = 6
+max_minutes = 20
+max_stalled_rounds = 2
+planning_effort = "medium"
+assessment_effort = "medium"
+max_high_escalations = 2
+
 [prompts]
 master_file = "prompts/master.md"
 profile_file = "private/profile.md"

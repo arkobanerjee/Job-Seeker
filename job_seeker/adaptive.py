@@ -6,19 +6,7 @@ checkpoint decisions before executing actions. Web content is evidence only.
 from datetime import datetime, timezone
 from typing import Literal
 from pydantic import Field
-from .settings import Strict, Query
-
-
-class AdaptiveSettings(Strict):
-    enabled: bool = False
-    max_rounds: int = Field(default=4, ge=1, le=8)
-    queries_per_round: int = Field(default=3, ge=1, le=5)
-    pages_per_round: int = Field(default=6, ge=1, le=10)
-    max_minutes: int = Field(default=20, ge=1, le=20)
-    max_stalled_rounds: int = Field(default=2, ge=1, le=4)
-    planning_effort: Literal['medium', 'high'] = 'medium'
-    assessment_effort: Literal['medium', 'high'] = 'medium'
-    max_high_escalations: int = Field(default=2, ge=0, le=4)
+from .settings import Strict, Query, AdaptiveSettings
 
 
 class ResearchDecision(Strict):
@@ -37,7 +25,7 @@ def stop_reason(state, policy, limits, now=None):
     started = datetime.fromisoformat(state['started_at'])
     if started.tzinfo is None:
         raise ValueError('Research start must include a timezone')
-    if (now-started).total_seconds() >= policy.max_minutes*60:
+    if (now-started).total_seconds()-state.get('paused_seconds',0) >= policy.max_minutes*60:
         return 'time_limit'
     for key, cap, reason in (
         ('rounds', policy.max_rounds, 'round_limit'),
@@ -75,3 +63,66 @@ def admitted_actions(decision, state, policy, limits, observed_urls):
             urls.append(url)
     return {'queries': queries, 'inspect_urls': urls,
             'high_reasoning': decision.use_high_reasoning and state.get('high_escalations', 0) < policy.max_high_escalations}
+
+
+def research_loop(state, policy, limits, *, plan, search, inspect, ask, persist, check):
+    """Checkpoint a round before execution; resume its saved actions, not its plan.
+
+    Tool callbacks keep their own durable counters/reservations. A process death
+    during a tool may leave an uncertain charge, which this loop never refunds.
+    """
+    state.setdefault('research_trace', [])
+    def trace(kind, **data):
+        state['research_trace'].append({'at':datetime.now(timezone.utc).isoformat(), 'type':kind, **data})
+        persist()
+    def stop(reason):
+        state['stop_reason'] = reason
+        trace('stop', reason=reason)
+    while True:
+        check()
+        active = state.get('active_round')
+        # The admitted last round can finish after incrementing rounds.
+        snapshot = dict(state)
+        if active: snapshot['rounds'] = max(0, state.get('rounds', 0)-1)
+        reason = stop_reason(snapshot, policy, limits)
+        if reason:
+            stop(reason); return
+        if not active:
+            decision = plan()
+            observed = [x['url'] for x in state.get('queue', [])]
+            actions = admitted_actions(decision, state, policy, limits, observed)
+            state['rounds'] = state.get('rounds', 0)+1
+            active = {'decision':decision.model_dump(), 'actions':actions, 'query_index':0,
+                      'phase':'search', 'inspected':0,
+                      'before':len(state.get('findings', []))+len(state.get('signals', []))}
+            state['active_round'] = active
+            if actions['high_reasoning']:
+                state['high_escalations'] = state.get('high_escalations', 0)+1
+            trace('plan', round=state['rounds'], decision=decision.model_dump(), admitted=actions)
+        decision = ResearchDecision.model_validate(active['decision'])
+        if decision.action == 'finish':
+            state.pop('active_round', None); stop('model_finished'); return
+        if decision.action == 'ask_user':
+            if not decision.question.strip():
+                raise ValueError('Planner requested clarification without a question')
+            if not ask(decision): return
+            state.pop('active_round', None); persist(); continue
+        actions = active['actions']
+        while active['query_index'] < len(actions['queries']):
+            check()
+            query = actions['queries'][active['query_index']]
+            # Persist intent before calling; SourceTools checkpoints charged work.
+            state.setdefault('attempted_queries', [])
+            if query['query'] not in state['attempted_queries']:
+                state['attempted_queries'].append(query['query'])
+            trace('search_start', query=query['query'])
+            search(query)
+            active['query_index'] += 1
+            trace('search_end', query=query['query'])
+        active['phase'] = 'inspect'; persist()
+        inspect(actions['inspect_urls'], actions['high_reasoning'])
+        if state.get('status') == 'waiting_user': return
+        after = len(state.get('findings', []))+len(state.get('signals', []))
+        state['stalled_rounds'] = state.get('stalled_rounds', 0)+1 if after == active['before'] else 0
+        trace('round_end', round=state['rounds'], inspected=active['inspected'], new_records=after-active['before'])
+        state.pop('active_round', None); persist()
