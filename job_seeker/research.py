@@ -103,7 +103,7 @@ def run_research(provider="openai",model="gpt-5-mini",run_limit=2,max_searches=4
     run_id=uuid4().hex
     folder=ROOT/"runs"/run_id; folder.mkdir(parents=True)
     ledger=Ledger(ROOT/"runs"/"budget.sqlite3",run_id,run_limit)
-    profile=(ROOT/"search-profile.md").read_text(encoding="utf-8")
+    profile=((ROOT/"private/archive/initial-planning/search-profile.md") if (ROOT/"private/archive/initial-planning/search-profile.md").exists() else ROOT/"search-profile.md").read_text(encoding="utf-8")
     result={"run_id":run_id,"mode":"live","provider":provider,"model":model,
             "started_at":datetime.now(timezone.utc).isoformat(),"status":"running", "findings":[],"limitations":[],"usage":[],"run_limit_usd":run_limit}
     def persist():
@@ -237,7 +237,7 @@ def review_saved(run_id):
         "Use exact source_id, URL, role title and verbatim quotes. List useful vacancy leads, watchlist companies, and exclusions. "
         "An aggregate jobs index is not an individual vacancy and must not be treated as an employer. "
         "State gaps including insufficient data/analytics coverage. No new research is possible in this review.\n"+
-        (ROOT/"search-profile.md").read_text(encoding="utf-8")+"\nSAVED SOURCES:\n"+json.dumps(pages,ensure_ascii=False))
+        ((ROOT/"private/archive/initial-planning/search-profile.md") if (ROOT/"private/archive/initial-planning/search-profile.md").exists() else ROOT/"search-profile.md").read_text(encoding="utf-8")+"\nSAVED SOURCES:\n"+json.dumps(pages,ensure_ascii=False))
     if len(prompt.encode("utf-8"))>80000: raise ValueError("Evidence exceeds review context ceiling")
     ledger=Ledger(ROOT/"runs"/"budget.sqlite3",run_id,original.get("run_limit_usd",2))
     reservation=ledger.reserve("openai_saved_evidence_review",0.05)

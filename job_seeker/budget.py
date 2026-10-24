@@ -8,6 +8,11 @@ from contextlib import contextmanager
 class BudgetExceeded(RuntimeError):
     pass
 
+
+class SpendingLimitExceeded(BudgetExceeded):
+    """A normal stop at the saved run allowance."""
+    pass
+
 def micros(amount):
     value = Decimal(str(amount))
     if not value.is_finite() or value <= 0:
@@ -19,7 +24,7 @@ class Ledger:
         self.path, self.run_id = path, run_id
         self.limit = micros(run_limit)
         if self.limit > micros(2):
-            raise ValueError("Initial per-run ceiling is $2")
+            raise ValueError("Maximum configurable per-run ceiling is $2")
         path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
             db.execute("CREATE TABLE IF NOT EXISTS reservations (id TEXT PRIMARY KEY, run TEXT, kind TEXT, reserved INTEGER, observed REAL, created TEXT DEFAULT CURRENT_TIMESTAMP)")
@@ -37,11 +42,9 @@ class Ledger:
         cost = micros(amount)
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            total = db.execute("SELECT COALESCE(SUM(reserved),0) FROM reservations").fetchone()[0]
             current = db.execute("SELECT COALESCE(SUM(reserved),0) FROM reservations WHERE run=?", (self.run_id,)).fetchone()[0]
-            # $5 review gate is intentionally stronger than the $20 total ceiling.
-            if total + cost > micros(5) or current + cost > self.limit:
-                raise BudgetExceeded("Initial $5 review gate or per-run ceiling reached")
+            if current + cost > self.limit:
+                raise SpendingLimitExceeded("Per-run spending threshold reached")
             ident = uuid4().hex
             db.execute("INSERT INTO reservations(id,run,kind,reserved) VALUES(?,?,?,?)", (ident,self.run_id,kind,cost))
         return ident
@@ -60,5 +63,6 @@ class Ledger:
                 "observed_estimate_usd": sum(x[2] or 0 for x in rows),
                 "unreconciled_calls": sum(x[2] is None for x in rows),
                 "initial_stage_reserved_usd": total/1e6,
-                "review_gate_usd": 5, "prototype_ceiling_usd": 20,
+                "total_reserved_usd": total/1e6, "run_limit_usd": self.limit/1e6,
+                "policy": "per_run", "review_gate_usd": None, "prototype_ceiling_usd": None,
                 "note": "Conservative reservations, not a provider invoice. Tavily credits valued at PAYG even if free. Failed/uncertain calls retain reservations."}

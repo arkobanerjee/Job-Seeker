@@ -47,14 +47,17 @@ test('health diagnostics are private and marked stale when state changes',async(
  assert.equal((await (await worker.fetch(req('/api/health'),e)).json()).stale,true);
  assert.equal((await worker.fetch(req('/api/health','PUT',{...report,files:-1}),e)).status,400);
 });
-test('budget cannot reset, double reserve, or exceed gate',async()=>{
+test('cumulative accounting never blocks a new run and retains idempotency',async()=>{
   const e=env();assert.equal((await worker.fetch(req('/api/initialize','POST',{already_reserved:1.15}),e)).status,200);
   assert.equal((await worker.fetch(req('/api/initialize','POST',{already_reserved:0}),e)).status,409);
   assert.equal((await worker.fetch(req('/api/reserve','POST',{id:'one',amount:2}),e)).status,200);
   assert.equal((await worker.fetch(req('/api/reserve','POST',{id:'one',amount:2}),e)).status,200);
-  assert.equal((await worker.fetch(req('/api/reserve','POST',{id:'two',amount:2}),e)).status,402);
+  assert.equal((await worker.fetch(req('/api/reserve','POST',{id:'two',amount:2}),e)).status,200);
+  const budget=await (await worker.fetch(req('/api/budget'),e)).json();assert.equal(budget.reserved,5.15);assert.equal(budget.ceiling,null);assert.equal(budget.policy,'per_run');
+  assert.equal((await worker.fetch(req('/api/reserve','POST',{id:'one',amount:.5}),e)).status,409);
+  assert.equal((await worker.fetch(req('/api/reserve','POST',{id:'bad',amount:3}),e)).status,400);
 });
-test('compare and swap prevents concurrent overspend',async()=>{
+test('compare and swap prevents lost accounting updates',async()=>{
   const e=env();await worker.fetch(req('/api/initialize','POST',{already_reserved:2}),e);
   const results=await Promise.all(['a','b'].map(id=>worker.fetch(req('/api/reserve','POST',{id,amount:2}),e)));
   assert.equal(results.filter(r=>r.status===200).length,1);
@@ -186,4 +189,12 @@ test('version-checked state updates cannot overwrite a changed snapshot',async()
  const e=env();await e.STATE.put('state/latest.zip','original');const body=new TextEncoder().encode('restored');
  const request=new Request('https://jobs.example/api/state',{method:'PUT',headers:{Authorization:'Bearer test-only','Content-Length':String(body.length),'If-Match':'"wrong"'},body});
  assert.equal((await worker.fetch(request,e)).status,409);
+});
+
+
+test('legacy gate state is readable without resetting its history',async()=>{
+ const e=env();await e.STATE.put('budget.json',JSON.stringify({reserved:20,ceiling:5,reservations:[]}));
+ const b=await (await worker.fetch(req('/api/budget'),e)).json();assert.equal(b.reserved,20);assert.equal(b.ceiling,null);
+ assert.equal((await worker.fetch(req('/api/reserve','POST',{id:'next',amount:.5}),e)).status,200);
+ assert.equal((await (await worker.fetch(req('/api/budget'),e)).json()).reserved,20.5);
 });

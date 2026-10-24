@@ -14,7 +14,7 @@ from typing import TypedDict,Literal
 from contextlib import contextmanager
 from pydantic import BaseModel, Field
 from .settings import ROOT, load_settings, render_prompt, fingerprint, Settings
-from .budget import Ledger, BudgetExceeded
+from .budget import SpendingLimitExceeded, Ledger, BudgetExceeded
 from .sources import SourceTools, ServiceFailure, normalized
 from .research import Finding, Report, validate_findings, write_json
 from .controls import RunStopped,check_control
@@ -486,8 +486,9 @@ def _run(config,resume,on_checkpoint=None,control=None,operation="discovery"):
                     questions.cancel(question['id']);Outbox(ROOT/'runs/outbox.sqlite3').cancel('question:'+question['id'])
         state['limitations'].append('User requested '+exc.action+'; stopped at a tool boundary.')
     except (Exception,KeyboardInterrupt) as exc:
-        expected_limit=isinstance(exc,BudgetExceeded) and state.get('stop_reason') in ('time_limit','model_call_limit','round_limit','research_resources_exhausted','no_progress')
+        expected_limit=isinstance(exc,SpendingLimitExceeded) or isinstance(exc,BudgetExceeded) and state.get('stop_reason') in ('time_limit','model_call_limit','round_limit','research_resources_exhausted','no_progress')
         if not expected_limit:record(state,'failure',error_type=type(exc).__name__)
+        if isinstance(exc,SpendingLimitExceeded):state['stop_reason']='run_budget_limit'
         if adaptive and isinstance(exc,BudgetExceeded):
             state.setdefault('stop_reason','budget_or_model_limit')
             state.setdefault('research_trace',[]).append({'at':datetime.now(timezone.utc).isoformat(),'type':'stop','reason':state['stop_reason']})

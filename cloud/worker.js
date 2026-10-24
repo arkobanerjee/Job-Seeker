@@ -45,12 +45,12 @@ export default {
       }
       if(u.pathname==='/api/budget' && request.method==='GET') {
         const object=await env.STATE.get('budget.json');
-        return object ? reply(await object.json()) : reply({error:'Initialize state before running'},409);
+        return object ? reply({...await object.json(),ceiling:null,policy:'per_run'}) : reply({error:'Initialize state before running'},409);
       }
       if(u.pathname==='/api/initialize' && request.method==='POST') {
         const body=await request.json();
-        if(!Number.isFinite(body.already_reserved) || body.already_reserved<0 || body.already_reserved>5) return reply({error:'Invalid migration balance'},400);
-        const result=await env.STATE.put('budget.json',JSON.stringify({reserved:body.already_reserved,ceiling:5,reservations:[]}),{onlyIf:{etagDoesNotMatch:'*'}});
+        if(!Number.isFinite(body.already_reserved) || body.already_reserved<0) return reply({error:'Invalid migration balance'},400);
+        const result=await env.STATE.put('budget.json',JSON.stringify({reserved:body.already_reserved,ceiling:null,policy:'per_run',reservations:[]}),{onlyIf:{etagDoesNotMatch:'*'}});
         return result ? reply({initialized:true}) : reply({error:'Already initialized'},409);
       }
       if(u.pathname==='/api/reserve' && request.method==='POST') {
@@ -62,7 +62,7 @@ export default {
         // Idempotency for a response lost after a successful write.
         const previous=budget.reservations.find(x=>x.id===id);
         if(previous) return previous.amount===amount ? reply({reserved:true}) : reply({error:'Reservation mismatch'},409);
-        if(budget.reserved+amount>budget.ceiling) return reply({error:'Review budget reached'},402);
+        budget.ceiling=null;budget.policy='per_run';
         budget.reserved+=amount; budget.reservations.push({id,amount,at:new Date().toISOString()});
         const stored=await env.STATE.put('budget.json',JSON.stringify(budget),{onlyIf:{etagMatches:object.etag}});
         return stored ? reply({reserved:true}) : reply({error:'Concurrent reservation; retry later'},409);

@@ -55,3 +55,8 @@ $0.40 with 8,000-token adaptive output headroom, always under existing gates.
 
 Recommendation: retain one worker and trial adaptive manual searches. Repeat
 labelled comparisons before changing scheduling or claiming better precision.
+
+
+## Deployment confirmation — 24 October 2026
+
+The acceptance fixes are merged and CI passed. Cloudflare has been redeployed. Adaptive manual discovery is now enabled with medium reasoning and the tested bounded settings. Profile/resume, weekday monitoring and existing production records were preserved. No experiment results were imported and no production research was started during verification. The earlier rollout paragraph records the pre-activation state. The production reservation gate has $0.4848 remaining; it was not reset.

@@ -17,11 +17,14 @@ def finding(**overrides):
         evidence_quote=QUOTE,fit="possible",fit_reason="RAG overlap",language="unknown",location="unknown",eligibility="unknown",concerns=[]),**overrides})
 
 class Tests(unittest.TestCase):
-    def test_budget_persists_and_different_run_cannot_reset_stage(self):
+    def test_each_run_has_its_own_limit_and_history_is_preserved(self):
         with tempfile.TemporaryDirectory() as temp:
             p=Path(temp)/"budget.sqlite3"
-            for n in range(5): Ledger(p,str(n)).reserve("test",1)
-            with self.assertRaises(BudgetExceeded): Ledger(p,"new").reserve("test",0.001)
+            for n in range(12): Ledger(p,str(n),.5).reserve("test",.5)
+            ledger=Ledger(p,"new",.5);ledger.reserve("test",.5)
+            with self.assertRaises(BudgetExceeded): Ledger(p,"new",.5).reserve("test",0.001)
+            self.assertEqual(ledger.summary()['total_reserved_usd'],6.5)
+            self.assertIsNone(ledger.summary()['review_gate_usd'])
 
     def test_atomic_reservations(self):
         with tempfile.TemporaryDirectory() as temp:

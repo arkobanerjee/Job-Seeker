@@ -11,7 +11,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
 Copy-Item .env.example .env
 New-Item -ItemType Directory -Force private
-Copy-Item profile.example.md private/profile.md
+Copy-Item examples/profile.md private/profile.md
 ```
 
 Do not overwrite an existing .env or profile. Fill OPENAI_API_KEY and TAVILY_API_KEY
@@ -45,9 +45,8 @@ the OpenAI reasoning_effort setting. No automatic fallback occurs.
 [Official Luna model reference](https://developers.openai.com/api/docs/models/gpt-5.6-luna).
 
 Defaults: six basic searches, twelve page reads, sixteen model calls, 4,000 output
-tokens/call, $2/run, and the existing $5 cumulative review gate. Increasing search
-limits does not bypass monetary limits. The remaining prototype budget is not
-automatically unlocked. Credentials stay in .env. Private files and runs are excluded
+tokens/call and $0.50 per research run. There is no cumulative spending gate. Increasing search
+limits does not bypass the saved per-run allowance. Credentials stay in .env. Private files and runs are excluded
 from Git. Configuration and prompt files must not contain credentials.
 
 ## How it works
@@ -81,7 +80,7 @@ Evidence checks do not prove current vacancy availability or legal eligibility.
 
 ## Cloud and Telegram
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for the Cloudflare Worker/R2 dashboard, private
+See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for the Cloudflare Worker/R2 dashboard, private
 GitHub Actions worker, secrets setup and acceptance steps. No recurring job is enabled
 until deployment and budget review. Cloud state has a 20 MB limit and one serialized
 writer. Each cloud run reserves its whole ceiling before starting, so a killed runner
@@ -175,8 +174,8 @@ https://github.com/lever/postings-api . No application-submission endpoints are 
 The shared serialized workflow runs at 09:17 Europe/Berlin, Monday–Friday. GitHub may delay scheduled
 runs. Set monitoring.schedule_enabled=true in private cloud config to opt in; the
 default is false. monitoring.daily_run_usd defaults to $0.25 and cannot raise the
-normal per-run ceiling. The existing cumulative $5 review gate remains unchanged.
-Checks skip without spending if disabled, waiting for a user, or short of budget.
+normal per-run ceiling. Cumulative reservations are history only; there is no overall spending gate.
+Checks skip without spending if disabled or waiting for a user.
 Daily claims prevent duplicate scheduled runs; an interrupted claim is not retried
 automatically the same day. Last completion/skip reason is visible in the dashboard.
 
@@ -328,7 +327,7 @@ independence explicitly unverified. See DEPLOYMENT.md for limits and configurati
 
 Use setup A: one sequential researcher. The separate 18-run GPT-6 Luna comparison showed faster parallel execution but no established quality advantage; production remains unchanged. Experiments and their budget/data remain separate under private/comparison.
 
-See [USER_GUIDE.md](USER_GUIDE.md) for daily use, operations, editing your background, scheduling, budgets and interpreting run history. Historical limitations reflect the background available at the time.
+See [USER_GUIDE.md](docs/USER_GUIDE.md) for daily use, operations, editing your background, scheduling, budgets and interpreting run history. Historical limitations reflect the background available at the time.
 
 
 
@@ -336,8 +335,30 @@ See [USER_GUIDE.md](USER_GUIDE.md) for daily use, operations, editing your backg
 
 The bounded adaptive loop, dedicated company discovery, evidence qualification,
 combined company cards and research timeline are implemented. See
-[adaptive-evaluation.md](adaptive-evaluation.md) for the live acceptance results,
+[adaptive-evaluation.md](docs/evaluations/adaptive-evaluation.md) for the live acceptance results,
 fixes, costs and rollout status. Experiments remain separate from production.
 The larger vacancy trial yielded six body-supported candidates (three stretches)
 versus one from configured queries; these small samples do not establish market
 recall or independent fit accuracy. Adaptive manual search remains configurable.
+
+
+## Project layout and current spending policy
+
+- `config.toml`: editable model, search and per-run allowances.
+- `prompts/`: editable master prompt; `private/`: private profile, resume and test evidence.
+- `job_seeker/`, `cloud/`: Python worker and dashboard/control code.
+- `docs/`: operator guides, deployment notes, plans, evaluations and historical status.
+- `examples/`: public starter profile; `experiments/`: separate comparison harnesses.
+- `tests/`, `scripts/`: regression checks and deployment/publication helpers.
+- `runs/`: local working state; `.env`: local credentials (never published).
+
+Current vacancy and company allowances are $0.50 per run; scheduled monitoring
+keeps its separate $0.25 allowance. Cumulative spending never blocks later runs.
+Reservations, estimates and uncertain charges remain recorded; resuming a run
+keeps its original allowance and does not create a fresh budget. Each newly
+started run gets a separate allowance, so many runs can spend more than $0.50
+in total. Page, query, model-call, time and weekday restrictions still apply.
+The cloud budget view retains its historical total with no cumulative ceiling.
+
+Earlier private planning and pilot files are preserved under
+`private/archive/initial-planning/`. Start with the [user guide](docs/USER_GUIDE.md).

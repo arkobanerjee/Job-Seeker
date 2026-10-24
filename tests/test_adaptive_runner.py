@@ -11,6 +11,17 @@ from job_seeker.questions import Questions
 
 
 class AdaptiveRunnerTests(unittest.TestCase):
+    def test_spending_stop_is_partial_without_failure_flag(self):
+        from job_seeker.budget import SpendingLimitExceeded
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);config,_,search,fetch=self.exercise(root,None)
+            with patch('job_seeker.runner.ROOT',root),patch.dict('os.environ',{'OPENAI_API_KEY':'fake','TAVILY_API_KEY':'fake'}),patch.object(SourceTools,'search',search),patch.object(SourceTools,'fetch',fetch),patch('job_seeker.runner.invoke_model',side_effect=SpendingLimitExceeded('Per-run spending threshold reached')):
+                _,result=run(config)
+            self.assertEqual(result['status'],'partial')
+            self.assertEqual(result['stop_reason'],'run_budget_limit')
+            self.assertNotIn('error_type',result)
+            self.assertFalse(any(e['type']=='failure' for e in result['research_trace']))
+
     def test_final_fetched_page_is_assessed_before_resource_stop(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);assessed=[]
@@ -58,11 +69,12 @@ class AdaptiveRunnerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
             config,_,_,_=self.exercise(root,None)
-            config.write_text(config.read_text().replace('run_usd = 2.0','run_usd = 0.001'))
+            config.write_text(config.read_text().replace('run_usd = 0.50','run_usd = 0.001'))
             with patch('job_seeker.runner.ROOT',root),patch.dict('os.environ',{'OPENAI_API_KEY':'fake','TAVILY_API_KEY':'fake'}),patch.object(SourceTools,'search',side_effect=AssertionError('No search before reservation')):
                 _,result=run(config)
-            self.assertEqual(result['error_type'],'BudgetExceeded')
-            self.assertEqual(result['stop_reason'],'budget_or_model_limit')
+            self.assertNotIn('error_type',result)
+            self.assertEqual(result['status'],'partial')
+            self.assertEqual(result['stop_reason'],'run_budget_limit')
             self.assertEqual(result['usage'],[])
 
     def exercise(self,root,model):

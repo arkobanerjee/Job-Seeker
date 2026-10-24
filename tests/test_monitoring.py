@@ -7,10 +7,10 @@ from job_seeker.settings import Settings
 from job_seeker.catalog import Catalog
 
 class MonitoringPolicyTests(unittest.TestCase):
-    def test_budget_never_expands_and_gate_stops_daily_checks(self):
+    def test_daily_allowance_ignores_cumulative_history(self):
         settings=Settings(search={'queries':[{'track':'ai','query':'AI roles'}]})
         self.assertEqual(scheduled_cap(settings,{'ceiling':5,'reserved':4.75}),0.25)
-        self.assertIsNone(scheduled_cap(settings,{'ceiling':5,'reserved':4.76}))
+        self.assertEqual(scheduled_cap(settings,{'ceiling':None,'reserved':50}),0.25)
         settings.limits.run_usd=0.1
         self.assertEqual(scheduled_cap(settings,{'ceiling':5,'reserved':4.8}),0.1)
     def test_material_changes_ignore_collection_metadata(self):

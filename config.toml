@@ -9,7 +9,7 @@ input_usd_per_million = 0.20
 output_usd_per_million = 1.20
 
 [limits]
-run_usd = 2.0
+run_usd = 0.50
 max_searches = 6
 max_pages = 12
 max_model_calls = 16
@@ -55,8 +55,8 @@ queries = [
 telegram = false
 
 [company_discovery]
-# Manual operation; shared cumulative spending gate still applies.
-run_usd = 0.40
+# Manual operation with its own per-run allowance; no cumulative spending gate.
+run_usd = 0.50
 max_searches = 10
 max_pages = 24
 max_model_calls = 32

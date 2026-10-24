@@ -10,7 +10,7 @@ continues to use the existing ledger and approval gate.
 - [x] 5. Qualify company evidence: concrete event, identity, source/date, relevance and evidence-strength labels; retain weak/rejected leads with reasons outside the main queue.
 - [x] 6. Aggregate one company card with multiple evidence items; preserve decisions/notes, suppress repeated announcements, show momentum coverage and competitor uncertainty.
 - [x] 7. Show chronological actions, queries, selected pages, replanning explanations, failures and coverage gaps in the dashboard; distinguish limited runs from exhausted research.
-- [ ] 8. Evaluate fixed failure cases and fresh searches in isolation against the current baseline; measure useful distinct leads, claim support, duplication, coverage, time and cost. Then deploy and verify the merged version.
+- [x] 8. Evaluate fixed failure cases and fresh searches in isolation against the current baseline; measure useful distinct leads, claim support, duplication, coverage, time and cost. Then deploy and verify the merged version.
 
 ## Current implementation scope
 
@@ -206,3 +206,8 @@ require manual review; smaller vacancy runs did not show a gain. See
 adaptive-evaluation.md for tradeoffs and the private acceptance report for full
 receipts. The merged dashboard is live; item 8 remains pending the final runner
 fix PR merge/CI verification. No automatic schedule or budget increase occurred.
+
+
+## Final activation — 24 October 2026
+
+PR 28 merged as 4d0931504f5a0c9618079d63a51332582f6f9568 and Offline verification passed. The merged runtime sources matched the local deployment. Cloudflare was redeployed and staged adaptive settings were applied and read back successfully. New manual discovery uses medium planning/assessment reasoning, up to four rounds, with a $0.45 vacancy run ceiling and $0.40 company run ceiling. Existing weekday monitoring and private background were preserved. Authentication, dashboard features and Telegram webhook passed. Budget, catalog, registry and run history were unchanged; no production research was started. Item 8 is complete. The earlier pending-rollout statements above describe the pre-merge state. Private rollout receipt: private/adaptive-pr28-rollout.json.
