@@ -27,6 +27,12 @@ planning_effort = "medium"
 assessment_effort = "medium"
 max_high_escalations = 2
 
+[vacancy]
+# Search hints, not mandatory eligibility filters. Used by adaptive planning.
+regions = ["Germany", "Europe", "UAE", "remote"]
+navigation_links = 2
+role_families = { ai = ["AI engineer", "applied AI engineer", "machine learning engineer", "LLM engineer"], data = ["data scientist", "data analyst", "analytics engineer", "BI analyst"] }
+
 [prompts]
 master_file = "prompts/master.md"
 profile_file = "private/profile.md"

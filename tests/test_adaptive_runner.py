@@ -11,6 +11,35 @@ from job_seeker.questions import Questions
 
 
 class AdaptiveRunnerTests(unittest.TestCase):
+    def test_failed_search_page_replans_then_navigates_careers_to_posting(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); plans=[]; read=[]
+            config,_,_,_=self.exercise(root,None)
+            def search(source,query):
+                url='https://example.com/expired' if not source.cache else 'https://example.com/careers'
+                source.searches+=1;source.allowed.add(url);source.cache[query]=[{'url':url}]
+                return source.cache[query]
+            def fetch(source,url):
+                if url not in source.records:
+                    source.fetches+=1;read.append(url)
+                    page={'url':url,'http_status':410 if url.endswith('expired') else 200,'text':'Individual listing requires inspection.','source_id':url,'observed_at':'today','links':[]}
+                    if url.endswith('careers'):page.update(structured_index=True,links=['https://example.com/jobs/123'])
+                    source.records[url]=page
+                return source.records[url]
+            def model(config,prompt,ledger,state,schema=Assessment):
+                if schema is not ResearchDecision:return Assessment(source_type='employer')
+                plans.append(prompt)
+                if len(plans)==1:return ResearchDecision(action='research',explanation='Start search',queries=[{'track':'ai','query':'AI engineer Germany'}])
+                if len(plans)==2:
+                    self.assertIn('410',prompt);self.assertIn('machine learning engineer',prompt)
+                    return ResearchDecision(action='research',explanation='Change role and source',queries=[{'track':'ai','query':'junior machine learning engineer Germany careers'}])
+                if len(plans)==3:return ResearchDecision(action='research',explanation='Inspect discovered posting',inspect_urls=['https://example.com/jobs/123'])
+                return ResearchDecision(action='finish',explanation='Test complete')
+            with patch('job_seeker.runner.ROOT',root),patch.dict('os.environ',{'OPENAI_API_KEY':'fake','TAVILY_API_KEY':'fake'}),patch.object(SourceTools,'search',search),patch.object(SourceTools,'fetch',fetch),patch('job_seeker.runner.invoke_model',side_effect=model):
+                _,result=run(config)
+            self.assertEqual(read,['https://example.com/expired','https://example.com/careers','https://example.com/jobs/123'])
+            self.assertEqual(result['stop_reason'],'model_finished')
+
     def test_planning_reservation_failure_prevents_network(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
