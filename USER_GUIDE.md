@@ -158,3 +158,24 @@ Earlier notes from individual-source cards or configured aliases appear under
 until you save a company-level decision. Saving a new combined note retains the
 older notes in history. Dismissed companies stay in the collapsed review section
 when more evidence arrives; you can change their status to watch or investigate.
+
+
+## Read the research timeline
+
+Open **Run history**, then expand **Research timeline** on a run. It shows the
+recorded sequence: planning explanations, admitted queries, search results, pages
+attempted, HTTP failures, navigation, model calls, saved-assessment reuse, signal
+qualification, questions and round outcomes. Use the stop reason and unread-page
+count to understand what remains unfinished. Review the plan's coverage gaps;
+completion means bounded work ended, not that the internet was exhausted.
+
+The timeline is a tool-action record with short decision explanations. It does
+not expose internal model reasoning or full prompts, resume text or your answer
+contents. A start without a matching completion receipt has an uncertain outcome.
+Old runs may have no chronological records or only partial saved records; the UI
+labels this instead of inventing a history.
+
+The dashboard limits trace size and states how many earlier events were omitted.
+Full saved receipts remain in private checkpoint/result evidence (and archived
+run evidence after archival). **What was searched and read** still supplies the
+separate saved query/source summary for older runs.

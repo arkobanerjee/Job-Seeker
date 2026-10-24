@@ -117,9 +117,9 @@ def research_loop(state, policy, limits, *, plan, search, inspect, ask, persist,
             if query['query'] not in state['attempted_queries']:
                 state['attempted_queries'].append(query['query'])
             trace('search_start', query=query['query'])
-            search(query)
+            receipt=search(query)
             active['query_index'] += 1
-            trace('search_end', query=query['query'])
+            trace('search_end', query=query['query'], **(receipt or {}))
         active['phase'] = 'inspect'; persist()
         inspect(actions['inspect_urls'], actions['high_reasoning'])
         if state.get('status') == 'waiting_user': return

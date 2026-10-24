@@ -63,4 +63,6 @@ class CompanyDiscoveryTests(unittest.TestCase):
             self.assertEqual(len(queries),5)
             self.assertEqual(len(result['signals']),5)
             self.assertEqual(result['findings'],[])
+            self.assertEqual(len([e for e in result['research_trace'] if e['type']=='signal_validation']),5)
+            self.assertIn('investigate',next(e['outcome'] for e in result['research_trace'] if e['type']=='signal_validation'))
             self.assertTrue(all('after:' in q for q in queries))

@@ -88,6 +88,10 @@ class AdaptiveRunnerTests(unittest.TestCase):
             self.assertIn('https://example.com/1',plans[1])
             self.assertEqual(result['stop_reason'],'no_progress')  # Two inspected rounds with no useful records.
             self.assertEqual(len([t for t in result['research_trace'] if t['type']=='page']),2)
+            receipts=[t for t in result['research_trace'] if t['type']=='search_end']
+            self.assertEqual(receipts[0]['result_count'],1)
+            self.assertEqual(receipts[0]['urls'],['https://example.com/1'])
+            self.assertEqual(result['research_trace'][0]['type'],'plan')
 
     def test_planner_question_resumes_without_replanning_or_searching_early(self):
         with tempfile.TemporaryDirectory() as tmp:

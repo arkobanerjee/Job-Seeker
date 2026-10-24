@@ -49,3 +49,20 @@ test('dismissed companies stay out of the main queue with evidence and notes pre
  assert.equal(card.children.filter(n=>n.tag==='details').length,2);
  assert.equal(card.children.find(n=>n.tag==='textarea').value,'Already checked');
 });
+
+test('research timeline renders recorded queries, gaps, failures and truncation honestly',()=>{
+ const nodes=new Map();
+ const make=tag=>({tag,children:[],attributes:{},append(...items){this.children.push(...items)},setAttribute(k,v){this.attributes[k]=v}});
+ const document={createElement:make,getElementById(id){if(!nodes.has(id))nodes.set(id,make('div'));return nodes.get(id)}};
+ const context=vm.createContext({document});vm.runInContext(page.split('<script>')[1].split('</script>')[0],context);
+ context.card=make('article');context.run={stop_reason:'page_limit',unread_pages:3,trace:{scope:'partial_saved_actions',omitted_events:2,note:'Started actions without end receipts have uncertain outcomes',events:[
+  {sequence:3,type:'plan',explanation:'Try another title',queries:['junior ML Germany'],coverage_gaps:['Data roles']},
+  {sequence:4,type:'page',url:'https://example.com/expired',http_status:410},
+  {sequence:5,type:'failure',error_type:'ServiceFailure'}]}};
+ vm.runInContext('renderResearchTrace(run,card)',context);
+ const texts=node=>[node.textContent||'',...node.children.flatMap(texts)];
+ const output=texts(context.card).join(' ');
+ for(const value of ['Page limit reached','3 discovered pages remain unread','Partial historical trace','2 earlier events omitted','junior ML Germany','Coverage gap: Data roles','HTTP 410','ServiceFailure'])assert.ok(output.includes(value),value);
+ context.card=make('article');context.run={};vm.runInContext('renderResearchTrace(run,card)',context);
+ assert.match(texts(context.card).join(' '),/No chronological action receipts/);
+});

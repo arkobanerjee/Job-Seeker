@@ -9,12 +9,12 @@ continues to use the existing ledger and approval gate.
 - [x] 4. Add a dedicated company-discovery operation with independent bounded search/page settings, funding/expansion/product/deployment themes, six-month preference and optional older backfill.
 - [x] 5. Qualify company evidence: concrete event, identity, source/date, relevance and evidence-strength labels; retain weak/rejected leads with reasons outside the main queue.
 - [x] 6. Aggregate one company card with multiple evidence items; preserve decisions/notes, suppress repeated announcements, show momentum coverage and competitor uncertainty.
-- [ ] 7. Show chronological actions, queries, selected pages, replanning explanations, failures and coverage gaps in the dashboard; distinguish limited runs from exhausted research.
+- [x] 7. Show chronological actions, queries, selected pages, replanning explanations, failures and coverage gaps in the dashboard; distinguish limited runs from exhausted research.
 - [ ] 8. Evaluate fixed failure cases and fresh searches in isolation against the current baseline; measure useful distinct leads, claim support, duplication, coverage, time and cost. Then deploy and verify the merged version.
 
 ## Current implementation scope
 
-Items 1–6 are implemented. Set `[adaptive] enabled=true` to opt in for
+Items 1–7 are implemented. Set `[adaptive] enabled=true` to opt in for
 new discovery runs. Existing cloud configs without this section keep the previous
 behavior. Do not enable scheduled adaptive research until isolated acceptance in
 item 8. Monitoring continues to revisit saved sources without the planner.
@@ -145,3 +145,27 @@ configured aliases, historical-ID migration, note preservation and actual page
 rendering of evidence/history/dismissed cards. No live deployment or paid research
 was performed. Chronological research trace UI is item 7; full comparison and
 production acceptance remain item 8.
+
+
+## Item 7: chronological research timeline
+
+New run history includes allowlisted chronological action receipts: planning
+explanations and admitted queries/observed pages, search starts/completions and
+result URLs/counts, page attempts/HTTP outcomes, model starts/completions/token
+usage, cached assessments, navigation, company qualification counts, questions,
+round outcomes, failures and stop reasons. The UI shows unread discovered pages
+and pending coverage gaps; a completed bounded run is not exhaustive research.
+
+Model prompts, raw page text, resume text, candidate answers and credentials are
+not exported into timeline summaries. Explanations are short decision outputs,
+not internal reasoning. Starts without completion receipts have uncertain
+outcomes. Old actions are not inferred from counters or reconstructed; partial
+historical traces are labelled explicitly. Trace recording does not change tool
+budgets or retry policy, and summaries distinguish saved-page reuse.
+
+Per-run trace summaries retain the newest receipts within a 16 KB event budget;
+a shared 600 KB allowance bounds exported event detail across the newest 250
+runs (metadata adds small overhead). Omitted-event counts are explicit and full
+saved receipts stay in private run evidence. Tests cover actual runner search
+receipts, privacy allowlisting, historical absence, truncation, aggregate bounds,
+and dashboard timeline rendering. Deployment and paid research remain item 8.

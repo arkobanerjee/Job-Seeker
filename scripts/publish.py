@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/aggregate-company-evidence'
+BRANCH='codex/research-timeline'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -30,13 +30,13 @@ def main():
         parent=head.json()['object']['sha'] if exists else api('GET','/git/ref/heads/main')['object']['sha']
         tree_base=api('GET','/git/commits/'+parent)['tree']['sha']
         tree=api('POST','/git/trees',{'base_tree':tree_base,'tree':entries})
-        commit=api('POST','/git/commits',{'message':'Aggregate company evidence and preserve earlier decisions','tree':tree['sha'],'parents':[parent]})
+        commit=api('POST','/git/commits',{'message':'Show chronological research actions and stop reasons','tree':tree['sha'],'parents':[parent]})
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body='Combines signal, competitor, rejection and momentum evidence into stable company cards using normalized names and explicit configured aliases. Preserves all evidence/status/date/source/run receipts; matching excerpts are grouped as copies without claiming independent corroboration. Retains old source-card and alias decisions through compatible IDs, shows earlier notes, and keeps dismissed companies out of the main queue when new evidence arrives.\n\nValidation: 30 Node backend/dashboard tests, including multiple evidence labels, duplicate excerpts, shared-host separation, alias migration, old-ID writes, retained notes and actual dismissed-card/evidence/history rendering. No production deployment, paid research or historical data rewrite.'
-        pr=prs[0] if prs else api('POST','/pulls',{'title':'Aggregate company evidence and preserve earlier decisions','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Aggregate company evidence and preserve earlier decisions','body':body})
+        body='Adds a run-history timeline with recorded plans/admitted queries, result URLs, page/HTTP outcomes, navigation, model usage, cached assessments, company qualification counts, questions, failures and stop reasons. Shows unread discovered pages, coverage gaps and explicit historical/truncation limits. New action receipts are checkpointed while preserving budgets/retry semantics. Export uses an allowlist and bounded event detail rather than prompts, resume text, raw pages or candidate answers.\n\nValidation: full Python suite, recovery drills and 31 Node backend/dashboard tests. Covers actual runner search receipts, missing historical traces, privacy, per-run/global export bounds, and rendered queries/gaps/failures/stop reasons. No deployment or paid research performed; isolated quality comparison and production acceptance remain item 8.'
+        pr=prs[0] if prs else api('POST','/pulls',{'title':'Show chronological research actions and stop reasons','head':BRANCH,'base':'main','body':body,'draft':True})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Show chronological research actions and stop reasons','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':
