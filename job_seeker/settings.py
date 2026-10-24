@@ -12,6 +12,18 @@ ROOT = Path(__file__).resolve().parent.parent
 class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+class AdaptiveSettings(Strict):
+    enabled: bool = False
+    max_rounds: int = Field(default=4, ge=1, le=8)
+    queries_per_round: int = Field(default=3, ge=1, le=5)
+    pages_per_round: int = Field(default=6, ge=1, le=10)
+    max_minutes: int = Field(default=20, ge=1, le=20)
+    max_stalled_rounds: int = Field(default=2, ge=1, le=4)
+    planning_effort: Literal['medium', 'high'] = 'medium'
+    assessment_effort: Literal['medium', 'high'] = 'medium'
+    max_high_escalations: int = Field(default=2, ge=0, le=4)
+
+
 class ModelSettings(Strict):
     provider: Literal["openai", "anthropic"] = "openai"
     name: str = "gpt-5.6-luna"
@@ -137,6 +149,7 @@ class CorroborationSettings(Strict):
 
 
 class Settings(Strict):
+    adaptive: AdaptiveSettings = Field(default_factory=AdaptiveSettings)
     model: ModelSettings = Field(default_factory=ModelSettings)
     limits: Limits = Field(default_factory=Limits)
     prompts: Prompts = Field(default_factory=Prompts)

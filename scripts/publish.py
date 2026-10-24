@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/adaptive-controller-foundation'
+BRANCH='codex/adaptive-runner-integration'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -30,13 +30,13 @@ def main():
         parent=head.json()['object']['sha'] if exists else api('GET','/git/ref/heads/main')['object']['sha']
         tree_base=api('GET','/git/commits/'+parent)['tree']['sha']
         tree=api('POST','/git/trees',{'base_tree':tree_base,'tree':entries})
-        commit=api('POST','/git/commits',{'message':'Add bounded adaptive research controller foundation','tree':tree['sha'],'parents':[parent]})
+        commit=api('POST','/git/commits',{'message':'Integrate restartable adaptive research rounds','tree':tree['sha'],'parents':[parent]})
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body='Adds the first item of the adaptive research plan: a provider-independent controller contract with typed decisions, novel-query and observed-link admission, medium/high reasoning policy, and bounded stop checks that preserve the original deadline on resume. Includes the ordered implementation checklist. The controller is not wired into the runner yet; production behavior and spending remain unchanged.\n\nValidation: all 115 Python tests pass, including five new tests for resource limits, duplicate queries, invented links, resume deadlines and invalid decisions.'
-        pr=prs[0] if prs else api('POST','/pulls',{'title':'Add bounded adaptive research controller foundation','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Add bounded adaptive research controller foundation','body':body})
+        body='Integrates the opt-in adaptive controller with the research runner: checkpointed plan/search/inspect/replan rounds, compact evidence memory, medium reasoning and bounded high-effort assessment batches. Planner questions use the durable question/Telegram path. Limits and spending remain enforced; time waiting for an answer is excluded without resetting counters. Saves action traces and explicit stop reasons. Existing configs stay on the previous path until adaptive.enabled is set.\n\nValidation: full Python suite, including replanning, reasoning selection, search interruption/resume, clarification/resume and planning reservation refusal. No paid live research or production settings changes.'
+        pr=prs[0] if prs else api('POST','/pulls',{'title':'Integrate restartable adaptive research rounds','head':BRANCH,'base':'main','body':body,'draft':True})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Integrate restartable adaptive research rounds','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

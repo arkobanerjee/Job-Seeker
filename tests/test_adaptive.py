@@ -20,6 +20,8 @@ class AdaptiveTests(unittest.TestCase):
     def test_resume_keeps_original_deadline(self):
         state = {'started_at':'2026-10-24T08:00:00+00:00'}
         self.assertEqual(stop_reason(state, AdaptiveSettings(), Limits(), datetime(2026,10,24,8,21,tzinfo=timezone.utc)), 'time_limit')
+        state['paused_seconds'] = 120
+        self.assertIsNone(stop_reason(state, AdaptiveSettings(), Limits(), datetime(2026,10,24,8,21,tzinfo=timezone.utc)))
 
     def test_each_stop_boundary(self):
         now = datetime(2026,10,24,8,0,tzinfo=timezone.utc)

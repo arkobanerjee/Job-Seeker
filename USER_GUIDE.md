@@ -60,3 +60,25 @@ This separate queue shows company signals, positive comparable board changes and
 ## Tabs and research coverage
 
 Use Job openings and Company opportunities tabs to switch queues. Refresh preserves the selected tab for the current session. Job filters apply only to the job queue. Company cards reflect collected evidence, not all companies that expanded over a date range. Current Tavily search requests have no explicit date filter and do not exhaustively cover six months. Signal research shares the bounded query/page allowance with vacancy searches. Multiple signals for the same company and source collapse into one card; momentum needs comparable observations on different dates, and competitor cards require discovered evidence. A historical company-news backfill is a separate research workload requiring its own scope and spending allowance.
+
+
+## Adaptive research (opt-in, awaiting acceptance)
+
+The `[adaptive]` section in the search configuration enables bounded planning,
+search, page inspection and replanning for new discovery runs. Use
+`enabled=true` to opt in; leave it disabled for normal production until the
+isolated acceptance comparison is complete. Existing saved runs keep their
+configuration snapshot.
+
+`planning_effort` and `assessment_effort` default to `medium` for OpenAI.
+`max_high_escalations` caps planner-requested high-reasoning assessment batches.
+Tune `max_rounds`, `queries_per_round`, `pages_per_round`, `max_minutes` and
+`max_stalled_rounds` alongside the existing total search/page/model/spending
+limits. Reaching a search limit still permits inspecting already found pages.
+A research round with no new finding or company signal counts as stalled.
+
+Questions arrive through the existing Telegram reply interface. Waiting pauses
+the time allowance, while all spending and counters remain attached to the saved
+run. Stops preserve unfinished work and an explicit stop reason. The JSON run
+artifacts include `research_trace`; dashboard trace presentation is a later step.
+The dedicated company-discovery operation is also a later step.
