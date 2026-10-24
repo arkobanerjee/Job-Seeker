@@ -6,7 +6,7 @@ continues to use the existing ledger and approval gate.
 - [x] 1. Shared controller foundation: typed research decisions, bounded query/link admission, medium/high reasoning policy, persisted-time stop checks, offline tests.
 - [x] 2. Integrate the controller with the restartable runner: plan → search → inspect → replan, compact evidence memory, durable action progress, budget reservation, normal Telegram clarification/resume, actual stop reasons. Enable medium assessment/planning and bounded high escalation through editable configuration.
 - [x] 3. Adapt vacancy research: role synonyms, location/skill coverage, careers and ATS navigation, stale/failed source recovery, separate vacancy/fit/eligibility assessments.
-- [ ] 4. Add a dedicated company-discovery operation with independent bounded search/page settings, funding/expansion/product/deployment themes, six-month preference and optional older backfill.
+- [x] 4. Add a dedicated company-discovery operation with independent bounded search/page settings, funding/expansion/product/deployment themes, six-month preference and optional older backfill.
 - [ ] 5. Qualify company evidence: concrete event, identity, source/date, relevance and evidence-strength labels; retain weak/rejected leads with reasons outside the main queue.
 - [ ] 6. Aggregate one company card with multiple evidence items; preserve decisions/notes, suppress repeated announcements, show momentum coverage and competitor uncertainty.
 - [ ] 7. Show chronological actions, queries, selected pages, replanning explanations, failures and coverage gaps in the dashboard; distinguish limited runs from exhausted research.
@@ -14,7 +14,7 @@ continues to use the existing ledger and approval gate.
 
 ## Current implementation scope
 
-Items 1, 2 and 3 are implemented. Set `[adaptive] enabled=true` to opt in for
+Items 1–4 are implemented. Set `[adaptive] enabled=true` to opt in for
 new discovery runs. Existing cloud configs without this section keep the previous
 behavior. Do not enable scheduled adaptive research until isolated acceptance in
 item 8. Monitoring continues to revisit saved sources without the planner.
@@ -62,3 +62,28 @@ ranked observed links enter an adaptive page assessment. URLs are not fabricated
 all normal source safety checks still apply. ATS index traversal and newly
 observed career links count as progress so navigation can reach a posting before
 the no-progress stop. Other page/search/model/spending caps still apply.
+
+
+## Item 4: dedicated company operation
+
+Manual `company` mode runs through the same serialized worker and spending
+ledger, with independent `[company_discovery]` search/page/model ceilings. Its
+run reservation is the lesser of the general and company run-dollar ceilings.
+It does not borrow an active vacancy run's remaining pages or reset any budget.
+Defaults: ten searches, twenty-four pages, thirty-two model calls, $0.25 ceiling.
+It enables the adaptive path for this explicit operation; ordinary vacancy
+settings and scheduled monitoring remain unchanged.
+
+The five editable themes are funding, expansion, product, deployment and team.
+Pending seed themes are admitted before discretionary refinement, subject to all
+limits; short runs may still leave themes unattempted. The planner can ask first.
+A minimum three stalled-round threshold permits refinement after theme batches.
+The six-calendar-month default uses an `after:` query hint anchored to run start;
+`include_older=true` omits it. This is not a guaranteed date filter or historical
+census. Source event-date verification is still required.
+
+Company runs retain signals in the existing registry/company queue and suppress
+vacancy findings. UI button, workflow dispatch mode and local/cloud CLI are
+connected. Resumption uses the saved company configuration/mode. Evidence-strength
+qualification and multi-evidence cards remain items 5 and 6. No live research or
+scheduled company job has been started for this implementation step.

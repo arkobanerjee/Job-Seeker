@@ -6,7 +6,7 @@ from dotenv import dotenv_values
 
 ROOT=Path(__file__).resolve().parent.parent
 REPO='arkobanerjee/Job-Seeker'
-BRANCH='codex/adaptive-vacancy-discovery'
+BRANCH='codex/dedicated-company-discovery'
 
 def main():
     values=dotenv_values(ROOT/'.env'); token=values.get('GITHUB_DEPLOY_TOKEN')
@@ -30,13 +30,13 @@ def main():
         parent=head.json()['object']['sha'] if exists else api('GET','/git/ref/heads/main')['object']['sha']
         tree_base=api('GET','/git/commits/'+parent)['tree']['sha']
         tree=api('POST','/git/trees',{'base_tree':tree_base,'tree':entries})
-        commit=api('POST','/git/commits',{'message':'Improve adaptive vacancy search and careers navigation','tree':tree['sha'],'parents':[parent]})
+        commit=api('POST','/git/commits',{'message':'Add dedicated bounded company discovery operation','tree':tree['sha'],'parents':[parent]})
         if exists: api('PATCH','/git/refs/heads/'+BRANCH,{'sha':commit['sha'],'force':False})
         else: api('POST','/git/refs',{'ref':'refs/heads/'+BRANCH,'sha':commit['sha']})
         prs=api('GET','/pulls?head=arkobanerjee:'+BRANCH+'&state=open')
-        body='Improves opt-in adaptive vacancy research with editable role/region hints, attempted-query gaps and failed/closed/rejected page outcomes supplied to replanning. Ranks observed career/ATS links, queues a bounded number of navigation candidates and preserves route context. Newly discovered navigation links count as progress so index traversal can reach a posting. Removes a fixed German-proficiency assumption from the finding schema.\n\nValidation: full Python suite plus an offline end-to-end scenario covering expired posting → revised query → careers index → observed posting, navigation admission/ranking and honest coverage hints. Production configuration remains unchanged; live quality comparison is still pending.'
-        pr=prs[0] if prs else api('POST','/pulls',{'title':'Improve adaptive vacancy search and careers navigation','head':BRANCH,'base':'main','body':body,'draft':True})
-        api('PATCH','/pulls/'+str(pr['number']),{'title':'Improve adaptive vacancy search and careers navigation','body':body})
+        body='Adds a dedicated manual company-discovery operation connected to dashboard, authenticated dispatch, GitHub workflow and local/cloud CLI. Uses independent search/page/model ceilings under the existing shared spending gate; preserves saved configuration on resume. Covers funding, expansion, product, deployment and team seed queries before refinement. Supports a six-calendar-month query-date hint and explicit older-history option. Company runs save signals while suppressing vacancy findings.\n\nValidation: 126 Python tests and Node backend/tab tests, including independent limits, calendar/backfill behavior, all-theme collection without job-queue pollution and distinct workflow dispatch. No paid live research, production settings update or automatic company schedule. Evidence-strength filtering and aggregated cards remain the next steps.'
+        pr=prs[0] if prs else api('POST','/pulls',{'title':'Add dedicated bounded company discovery operation','head':BRANCH,'base':'main','body':body,'draft':True})
+        api('PATCH','/pulls/'+str(pr['number']),{'title':'Add dedicated bounded company discovery operation','body':body})
         print(json.dumps({'url':pr['html_url'],'commit':commit['sha'],'files':len(entries)}))
 
 if __name__=='__main__':

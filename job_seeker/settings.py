@@ -78,6 +78,16 @@ class VacancySettings(Strict):
 class Search(Strict):
     queries: list[Query] = Field(min_length=1, max_length=30)
 
+class CompanyDiscoverySettings(Strict):
+    run_usd: float = Field(default=0.25,gt=0,le=2,allow_inf_nan=False)
+    max_searches: int = Field(default=10,ge=1,le=20)
+    max_pages: int = Field(default=24,ge=1,le=40)
+    max_model_calls: int = Field(default=32,ge=1,le=50)
+    lookback_months: int = Field(default=6,ge=1,le=24)
+    include_older: bool = False
+    focus: str = Field(default='Germany Europe AI RAG data engineering',min_length=1,max_length=150)
+    themes: list[Literal['funding','expansion','product','deployment','team']] = Field(default_factory=lambda:['funding','expansion','product','deployment','team'],min_length=1,max_length=5)
+
 class Notifications(Strict):
     telegram: bool = False
 
@@ -164,6 +174,7 @@ class CorroborationSettings(Strict):
 
 
 class Settings(Strict):
+    company_discovery: CompanyDiscoverySettings = Field(default_factory=CompanyDiscoverySettings)
     vacancy: VacancySettings = Field(default_factory=VacancySettings)
     adaptive: AdaptiveSettings = Field(default_factory=AdaptiveSettings)
     model: ModelSettings = Field(default_factory=ModelSettings)

@@ -96,3 +96,30 @@ The next planning round receives failed-page status and earlier rejection
 reasons. It can change role titles or sources and inspect an observed individual
 posting behind a careers index. This can improve discovery, but a query attempt
 or a careers link does not establish a current suitable vacancy.
+
+
+## Discover companies
+
+After deployment, click **Discover companies** to queue a manual company research
+run. Review results in **Company opportunities**. **Find job openings** continues
+to start vacancy research. Both operations use the same cumulative spending gate
+and serialized worker, so they cannot bypass each other's reservations.
+
+Tune `[company_discovery]` in the configuration: `run_usd`, `max_searches`,
+`max_pages`, `max_model_calls`, `focus`, `themes`, `lookback_months` and
+`include_older`. The default company ceiling is $0.25 and never exceeds the
+configured general run-dollar ceiling. Smaller allowances can stop before all
+themes are searched; query/page/model limits are ceilings, not promised usage.
+
+Themes cover funding, expansion, product, deployment and team announcements.
+The default six-month search-date hint is anchored to the saved run start.
+Set `include_older=true` for older-history research. Search dates must still be
+checked against actual source evidence; undated events remain unknown.
+
+Local command: `python -m job_seeker.cli company --config config.toml`.
+GitHub Actions: select workflow mode `company`. The cloud worker invokes
+`python -m job_seeker.cloud company`. Saved company runs resume normally with
+their existing limits. No automatic company schedule is added.
+
+Company activity does not establish a suitable opening. Stronger qualification
+labels and combined evidence cards are the next implementation steps.
