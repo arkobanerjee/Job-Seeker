@@ -14,6 +14,18 @@ class Questions:
             if 'message_id' not in [r[1] for r in db.execute("PRAGMA table_info(questions)")]:
                 db.execute("ALTER TABLE questions ADD COLUMN message_id INTEGER")
             if 'cancelled' not in [r[1] for r in db.execute("PRAGMA table_info(questions)")]:db.execute("ALTER TABLE questions ADD COLUMN cancelled INTEGER DEFAULT 0")
+            db.execute("CREATE TABLE IF NOT EXISTS preference_answers(id TEXT PRIMARY KEY, question TEXT, answer TEXT, updated TEXT)")
+
+    def remember(self,question):
+        if question.get('answer') is None or question.get('cancelled'):return
+        key=hashlib.sha256(' '.join(question['prompt'].split()).casefold().encode()).hexdigest()
+        with closing(sqlite3.connect(self.path)) as db,db:
+            db.execute("INSERT INTO preference_answers VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET answer=excluded.answer,updated=excluded.updated",
+                       (key,question['prompt'],question['answer'],datetime.now(timezone.utc).isoformat()))
+
+    def preferences(self):
+        with closing(sqlite3.connect(self.path)) as db:
+            return [{'question':q,'answer':a} for q,a in db.execute('SELECT question,answer FROM preference_answers ORDER BY updated DESC,id LIMIT 20')]
     def cancel(self,ident):
         with closing(sqlite3.connect(self.path)) as db,db:db.execute('UPDATE questions SET cancelled=1 WHERE id=?',(ident,))
     def ask(self,run_id,revision,prompt,reason):

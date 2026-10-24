@@ -16,7 +16,7 @@ PROJECT=Path(__file__).resolve().parent.parent
 
 def setup(root):
     (root/'private').mkdir(); (root/'prompts').mkdir()
-    (root/'config.toml').write_text((PROJECT/'config.toml').read_text())
+    (root/'config.toml').write_text((PROJECT/'config.toml').read_text().replace('[clarification]\n# Proactively check candidate preferences before research, then ask only when useful.\nenabled = true','[clarification]\n# Proactively check candidate preferences before research, then ask only when useful.\nenabled = false'))
     (root/'private/profile.md').write_text('Candidate with RAG and analytics experience. German basic.')
     (root/'prompts/master.md').write_text('PROFILE {{profile}} RESUME {{resume}}')
 

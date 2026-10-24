@@ -113,3 +113,12 @@ enabled = false
 max_pairs = 2
 # Only add ownership groups you have verified; different hosts alone are insufficient.
 publishers = {}
+
+[clarification]
+# Proactively check candidate preferences before research, then ask only when useful.
+enabled = true
+preflight = true
+max_questions_per_run = 2
+reuse_answers = true
+# Explicit preferences override older saved answers. Leave undecided topics absent.
+preferences = {}

@@ -211,3 +211,42 @@ See evaluations/adaptive-evaluation.md for evaluation limits and rollout status.
 
 
 Spending history is informational. Vacancy and company runs currently allow $0.50 each; weekday monitoring allows $0.25. Reaching a spending limit saves a partial result without a provider-failure flag. Repeated runs have no overall cumulative cap.
+
+
+## Proactive questions and remembered preferences
+
+Enable `[clarification] enabled=true` in private cloud configuration to check
+candidate preferences before a new vacancy or company search. Existing cloud
+configs without this section keep the previous behavior until enabled. The check
+asks one focused question when an unresolved preference would materially change
+scope or recommendations, rather than requiring research to become impossible.
+It can proceed without asking when the profile and saved answers are sufficient.
+A preflight check is an ordinary model call within the same run spending/call limits.
+
+The planner and page assessor can ask about recurring ambiguities during research.
+By default, at most two new questions are allowed per run across all three paths.
+Questions pause the same saved run and appear on Telegram and in the dashboard.
+Reply normally to the bot; the existing owner-only reply path queues resumption.
+No model calls or web searches are repeated merely because a pending answer is
+checked again. Resuming keeps the original spending allowance. Waiting for an
+answer is excluded from the execution-time allowance.
+
+Answers consumed by the worker are saved privately inside questions.sqlite3 and
+reused in later runs. This database already travels with private state and is
+preserved by restoration. Answers are task data, not tool permissions. Raw answers
+and question text are not added to public action traces. Candidate preference data
+is bounded before model input; omitted old answers remain unknown.
+
+Tune `preflight`, `max_questions_per_run`, and `reuse_answers`. Turning reuse off
+ignores older runs' answers while still using answers given in the current run.
+Optional `[clarification.preferences]` keys are `geography`, `seniority`,
+`internships`, `sponsorship`, `work_arrangement`, and `compensation`; explicit
+current preferences take precedence over older answers. Use these to pre-answer
+known preferences without waiting for a question. Do not include credentials.
+Routine saved-source monitoring does not initiate new preference questions.
+
+The agent asks what you are willing to consider or what support you need. It must
+not ask you to establish an employer's sponsorship policy, language requirement
+or hiring status. Those remain source-research questions or unknown facts. It
+does not send employer messages. Question generation is a model decision; this
+feature does not force a quota of questions or create a conversation every run.
