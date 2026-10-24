@@ -34,3 +34,18 @@ test('weak and rejected company cards render in collapsed investigation section'
  assert.equal(review.children.filter(n=>n.tag==='article').length,2);
  assert.equal(review.open,undefined);
 });
+
+test('dismissed companies stay out of the main queue with evidence and notes preserved',async()=>{
+ const nodes=new Map();
+ const make=tag=>({tag,children:[],hidden:false,attributes:{},append(...items){this.children.push(...items)},replaceChildren(){this.children=[]},setAttribute(k,v){this.attributes[k]=v}});
+ const document={createElement:make,getElementById(id){if(!nodes.has(id))nodes.set(id,make('div'));return nodes.get(id)}};
+ const row={company:'Example',title:'Funding',labels:['Reported funding'],qualification_status:'qualified',decision:{status:'dismissed',note:'Already checked'},previous_decisions:[{status:'watch',note:'Earlier note'}],evidence_count:1,source_count:2,evidence_items:[{label:'Reported funding',qualification_status:'qualified',title:'Funding',evidence:'An exact quote',sources:[{url:'https://example.com/news',run_id:'one'},{url:'https://copy.example/news',run_id:'two'}]}]};
+ const context=vm.createContext({document,fetch:async()=>({ok:true,json:async()=>[row]})});
+ vm.runInContext(page.split('<script>')[1].split('</script>')[0],context);
+ await vm.runInContext('renderCompanyOpportunities()',context);
+ const root=nodes.get('companyRows'),review=root.children.find(n=>n.tag==='details');
+ assert.equal(root.children.filter(n=>n.tag==='article').length,0);
+ const card=review.children.find(n=>n.tag==='article');
+ assert.equal(card.children.filter(n=>n.tag==='details').length,2);
+ assert.equal(card.children.find(n=>n.tag==='textarea').value,'Already checked');
+});
