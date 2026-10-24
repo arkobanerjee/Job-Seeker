@@ -25,3 +25,25 @@ Every batch freezes prompt, configuration, tasks and input hashes, and writes re
 Default simulation uses deterministic stand-ins and a finite searchable corpus. Its timing and output quality are not real agent performance results. It verifies isolation and accounting mechanics. The live pilot uses the same conservative finding validation as the app, but is intentionally smaller than the production pipeline: signals, competitor discovery, board monitoring, outbox and durable clarification/resumption are excluded. Questions are saved locally; no user messages are sent. This is a local capability boundary, not an OS sandbox for untrusted code.
 
 Inspect report.md and fill review-labels.json before making quality claims. More briefs and repeated paired runs are necessary for useful architecture conclusions. See comparison-plan.md in the workspace for the broader protocol.
+
+
+## Production adaptive-runner acceptance
+
+`python -m experiments.adaptive_acceptance --live` evaluates the actual runner
+in isolated per-arm roots, including fixed-content cases and fresh fixed/adaptive
+searches. It requires explicit paid execution and launches a child containing
+only model/search credentials. No GitHub, Cloudflare or Telegram credentials are
+passed, notifications/schedules are disabled, and all charges use the existing
+private/comparison/budget.sqlite3 $5 gate. A persistent adaptive-allowance.json
+bounds this acceptance series to its original additional $2.80 ceiling; failed
+calls and repeated evaluations do not reset it. It refuses a full batch when the
+remaining allowance is insufficient. Source captures, manifests, reference
+labels, predictions and all traces remain private.
+
+`--resume-batch <id>` explicitly verifies saved interrupted checkpoints with a
+maximum additional $0.08 reservation per arm; it preserves old reservations and
+before-resume metrics. `--vacancy-pair` runs the final larger equal-budget vacancy
+check (at most $0.90 across both arms), still under that same persistent allowance.
+These commands do not deploy code or change production settings. Fixed-content
+cases and live runs measure different things; small sequential live samples do
+not establish market recall or isolate the effect of reasoning from replanning.

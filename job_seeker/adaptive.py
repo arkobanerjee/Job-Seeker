@@ -34,7 +34,8 @@ def stop_reason(state, policy, limits, now=None):
     ):
         if state.get(key, 0) >= cap:
             return reason
-    if state.get('searches', 0) >= limits.max_searches and state.get('fetches', 0) >= limits.max_pages:
+    pending_saved_page=any(x.get('url') in state.get('sources',{}) and x.get('url') not in state.get('pages_done',[]) for x in state.get('queue',[]))
+    if state.get('searches', 0) >= limits.max_searches and state.get('fetches', 0) >= limits.max_pages and not pending_saved_page:
         return 'research_resources_exhausted'
     return None
 

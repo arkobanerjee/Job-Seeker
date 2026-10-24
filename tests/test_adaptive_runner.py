@@ -11,6 +11,20 @@ from job_seeker.questions import Questions
 
 
 class AdaptiveRunnerTests(unittest.TestCase):
+    def test_final_fetched_page_is_assessed_before_resource_stop(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);assessed=[]
+            config,_,search,fetch=self.exercise(root,None)
+            config.write_text(config.read_text().replace('max_searches = 6','max_searches = 1').replace('max_pages = 12','max_pages = 1'))
+            def model(config,prompt,ledger,state,schema=Assessment):
+                if schema is ResearchDecision:return ResearchDecision(action='research',explanation='Inspect one page',queries=[{'track':'ai','query':'RAG Germany'}])
+                assessed.append(prompt);return Assessment(source_type='index')
+            with patch('job_seeker.runner.ROOT',root),patch.dict('os.environ',{'OPENAI_API_KEY':'fake','TAVILY_API_KEY':'fake'}),patch.object(SourceTools,'search',search),patch.object(SourceTools,'fetch',fetch),patch('job_seeker.runner.invoke_model',side_effect=model):
+                _,result=run(config)
+            self.assertEqual(len(assessed),1)
+            self.assertEqual(result['stop_reason'],'research_resources_exhausted')
+            self.assertIsNone(result.get('error_type'))
+
     def test_failed_search_page_replans_then_navigates_careers_to_posting(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp); plans=[]; read=[]

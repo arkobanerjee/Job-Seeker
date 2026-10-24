@@ -330,3 +330,14 @@ Use setup A: one sequential researcher. The separate 18-run GPT-6 Luna compariso
 
 See [USER_GUIDE.md](USER_GUIDE.md) for daily use, operations, editing your background, scheduling, budgets and interpreting run history. Historical limitations reflect the background available at the time.
 
+
+
+### Adaptive research acceptance
+
+The bounded adaptive loop, dedicated company discovery, evidence qualification,
+combined company cards and research timeline are implemented. See
+[adaptive-evaluation.md](adaptive-evaluation.md) for the live acceptance results,
+fixes, costs and rollout status. Experiments remain separate from production.
+The larger vacancy trial yielded six body-supported candidates (three stretches)
+versus one from configured queries; these small samples do not establish market
+recall or independent fit accuracy. Adaptive manual search remains configurable.

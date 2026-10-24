@@ -70,7 +70,7 @@ Manual `company` mode runs through the same serialized worker and spending
 ledger, with independent `[company_discovery]` search/page/model ceilings. Its
 run reservation is the lesser of the general and company run-dollar ceilings.
 It does not borrow an active vacancy run's remaining pages or reset any budget.
-Defaults: ten searches, twenty-four pages, thirty-two model calls, $0.25 ceiling.
+Defaults: ten searches, twenty-four pages, thirty-two model calls, $0.40 ceiling.
 It enables the adaptive path for this explicit operation; ordinary vacancy
 settings and scheduled monitoring remain unchanged.
 
@@ -169,3 +169,40 @@ runs (metadata adds small overhead). Omitted-event counts are explicit and full
 saved receipts stay in private run evidence. Tests cover actual runner search
 receipts, privacy allowlisting, historical absence, truncation, aggregate bounds,
 and dashboard timeline rendering. Deployment and paid research remain item 8.
+
+
+## Item 8 progress — 24 October 2026
+
+Fixed-content checks passed twice (eight cases each). Live isolated comparisons
+found and reproduced context overflow on link-heavy pages, vacancy-query drift
+in company mode, overly narrow headcount wording, a final-fetched-page boundary
+bug and output-token exhaustion. Fixes and regression tests are prepared in the
+acceptance PR. Input context is bounded in UTF-8 bytes and preserves complete
+observed URLs; truncated source text forces manual review of vacancy proposals.
+A token-exhausted page assessment retains its charge, records the failure and
+continues without inferring findings or blindly retrying. Normal resource stops
+are distinguished from provider errors.
+
+Adaptive assessment output headroom is now separately configurable, defaulting
+to 8,000 tokens. The explicit manual company run defaults to a $0.40 reservation
+ceiling; the existing overall gate and smaller general run ceiling still apply.
+No company schedule is introduced and adaptive vacancies remain opt-in.
+
+The merged dashboard/control plane has been deployed and verified against its
+source. Authentication, tabs, grouped company cards and Telegram webhook pass;
+production settings, budget, registry, catalog and run history remain unchanged.
+Runner fixes require merge into main before GitHub Actions uses them. Final
+acceptance must not be marked complete until that merge/CI verification occurs.
+Private evidence and detailed results live in private/comparison/adaptive/;
+no experiment findings were imported into production.
+
+
+Final evaluation summary: eight fixed-content checks passed twice; a larger
+six-search/sixteen-page pair produced six body-supported adaptive vacancy leads
+(three strong/possible, three stretches) versus one fixed-query lead, after
+replaying the final title/form guards. The company pair produced three gated
+companies versus zero in mixed fixed discovery. Results are preliminary and
+require manual review; smaller vacancy runs did not show a gain. See
+adaptive-evaluation.md for tradeoffs and the private acceptance report for full
+receipts. The merged dashboard is live; item 8 remains pending the final runner
+fix PR merge/CI verification. No automatic schedule or budget increase occurred.
