@@ -1,5 +1,9 @@
 # Job Seeker
 
+New runs save private search/API evaluation logs with query lineage, result
+snapshots, contribution metrics and usage receipts. See
+[log locations and interpretation](docs/API_EVALUATION_LOGS.md).
+
 Personal job research in Python with LangChain/LangGraph, a configurable hosted model,
 editable prompts, Markdown resume input, and a durable queue of opportunities and
 rejected roles. Research is read-only; applications are always a human decision.

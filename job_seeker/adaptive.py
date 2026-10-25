@@ -9,6 +9,14 @@ from pydantic import Field
 from .settings import Strict, Query, AdaptiveSettings
 
 
+class QueryNote(Strict):
+    query: str = Field(min_length=1,max_length=350)
+    parent_search_id: str = Field(default='',max_length=32,description='An actual prior search ID from memory only when revising that search. Empty for a new independent search.')
+    change_reason: str = Field(default='',max_length=700,description='Concise decision explanation based on observed outcomes; not hidden reasoning.')
+    expected_improvement: str = Field(default='',max_length=500)
+    target_country: str = Field(default='unknown',max_length=100)
+    strategy: str = Field(default='unknown',max_length=100)
+
 class ResearchDecision(Strict):
     action: Literal['research', 'finish', 'ask_user']
     explanation: str = Field(min_length=1, max_length=1200)
@@ -17,6 +25,7 @@ class ResearchDecision(Strict):
     coverage_gaps: list[str] = Field(default_factory=list, max_length=8)
     question: str = Field(default='', max_length=1500)
     use_high_reasoning: bool = False
+    query_notes: list[QueryNote] = Field(default_factory=list,max_length=5,description='One note per proposed query, including the evidence-based reason and expected improvement. Parent IDs must exist in supplied search history.')
 
 
 def stop_reason(state, policy, limits, now=None):

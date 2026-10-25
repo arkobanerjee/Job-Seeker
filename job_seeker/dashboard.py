@@ -32,6 +32,16 @@ def serve(port=8765):
         def do_GET(self):
             if not self.valid_host(): return self.send(403,"Invalid host")
             path=urlsplit(self.path)
+            import re
+            match=re.fullmatch(r'/evaluation/([a-f0-9]{32})\.(json|csv)',path.path)
+            if match:
+                file=ROOT/'runs'/match[1]/'evaluation.json'
+                if not file.exists():return self.send(404,'No evaluation log for this run')
+                data=file.read_text(encoding='utf-8')
+                if match[2]=='csv':
+                    from .telemetry import csv_report
+                    return self.send(200,csv_report(json.loads(data)),'text/csv; charset=utf-8')
+                return self.send(200,data,'application/json; charset=utf-8')
             if path.path!="/": return self.send(404,"Not found")
             args=parse_qs(path.query); category=args.get("category",["all"])[0]; query=args.get("q",[""])[0].casefold()
             rows=catalog.list()
@@ -51,6 +61,11 @@ def serve(port=8765):
                 content+='<h3>'+escape(source['host'])+'</h3><p>'+escape(source['url'])+' · '+escape(source['ats'] or 'ATS unknown')+'</p>'
                 for observation in source['history']:
                     content+='<p>'+escape(' · '.join([observation['observed_at'] or 'Time unknown',observation['status'],observation['change']]))+'</p>'
+            content+='</details>'
+            content+='<details><summary>Search and API evaluation logs</summary><p>Saved search results, query revisions, API usage and attribution. Counts are not human-labelled quality scores.</p>'
+            for file in sorted((ROOT/'runs').glob('*/evaluation.json'),key=lambda p:p.stat().st_mtime,reverse=True)[:250]:
+                ident=file.parent.name
+                if re.fullmatch('[a-f0-9]{32}',ident):content+=f'<p>Run {ident}: <a href="/evaluation/{ident}.json">Full JSON log</a> · <a href="/evaluation/{ident}.csv">Search comparison CSV</a></p>'
             content+='</details>'
             for f in rows:
                 if category!="all" and f.get("kind")!=category: continue

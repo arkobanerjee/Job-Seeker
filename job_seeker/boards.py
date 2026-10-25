@@ -19,6 +19,14 @@ def board_targets(registry,seeds,limit):
 
 
 def observe(registry,run_id,seeds=(),limit=4):
+    from .telemetry import session,bind
+    with session():
+        state={'run_id':run_id,'mode':'board_observations','api_log':[],'search_log':[]}
+        bind(state)
+        result=_observe(registry,run_id,seeds,limit)
+        return {**result,'api_log':state['api_log'],'search_log':state['search_log']}
+
+def _observe(registry,run_id,seeds=(),limit=4):
     targets=board_targets(registry,seeds,limit)
     tools=SourceTools(None,lambda:None,max_fetches=limit);tools.allowed.update(targets)
     counts=[]

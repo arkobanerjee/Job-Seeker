@@ -55,6 +55,19 @@ class Cloud:
         if not self.url.startswith('https://') or not self.token: raise ValueError('Set JOB_SEEKER_URL and JOB_SEEKER_APP_TOKEN')
 
     def request(self,path,method='GET',body=None,binary=False,return_etag=False,expected_etag=None):
+        from . import telemetry as audit
+        import time
+        state=audit.ACTIVE.get();started=time.monotonic()
+        # Log upload never logs itself. No headers, bodies, credentials or endpoint tokens.
+        row=None if path.startswith('evaluation/') else audit.start(state,'cloudflare','state_api',route=path.split('/')[0],method=method)
+        try:
+            value=self._request(path,method,body,binary,return_etag,expected_etag)
+            audit.finish(state,row,'success',duration_ms=round((time.monotonic()-started)*1000,2))
+            return value
+        except Exception as exc:
+            audit.finish(state,row,'failed',error_type=type(exc).__name__,duration_ms=round((time.monotonic()-started)*1000,2));raise
+
+    def _request(self,path,method='GET',body=None,binary=False,return_etag=False,expected_etag=None):
         try:
             with httpx.Client(timeout=60,trust_env=False,follow_redirects=False) as client:
                 response=client.request(method,self.url+'/api/'+path,headers={'Authorization':'Bearer '+self.token,
@@ -74,6 +87,14 @@ class Cloud:
         self.request('catalog','PUT',catalog.list())
         from .history import run_history
         self.request('runs','PUT',run_history(root/'runs'))
+        # Only changed per-run exports are uploaded; old logs remain individually downloadable.
+        import hashlib
+        uploaded=getattr(self,'_uploaded_evaluations',{})
+        for path in (root/'runs').glob('*/evaluation.json'):
+            data=path.read_text(encoding='utf-8');digest=hashlib.sha256(data.encode()).hexdigest()
+            if uploaded.get(path.parent.name)==digest:continue
+            self.request('evaluation/'+path.parent.name,'PUT',json.loads(data));uploaded[path.parent.name]=digest
+        self._uploaded_evaluations=uploaded
         from .outbox import Outbox
         self.request('notifications','PUT',Outbox(root/'runs/outbox.sqlite3').summary())
         from .registry import Registry
@@ -225,6 +246,8 @@ def observe_cloud_boards(scheduled=False):
         folder=root/'runs'/ident;folder.mkdir()
         write_json(folder/'result.json',result)
         write_json(folder/'checkpoint.json',{**result,'config':settings.model_dump(),'cloud_envelope':False,'scheduled':scheduled,'queue':[],'cache':{},'limitations':['Board counts only; no job-fit assessment or hiring probability.']})
+        from .telemetry import save
+        save({**result,'folder':str(folder)})
         cloud.request('state','PUT',pack(root),True,expected_etag=etag)
         cloud.sync_views(root)
         return {k:result[k] for k in ('run_id','status','mode','targets','searches','model_calls')}

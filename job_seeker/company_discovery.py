@@ -107,4 +107,5 @@ def cover_themes(decision,settings,state):
     if not pending or capacity<=0:return decision
     return ResearchDecision(action='research',explanation='Cover unattempted company themes before refinement. '+decision.explanation[:900],
         queries=[{'track':s['track'],'query':s['query']} for s in pending[:capacity]],
+        query_notes=[{'query':s['query'],'change_reason':'Configured company theme not yet attempted: '+s['theme'],'expected_improvement':'Obtain source evidence for this company theme','strategy':s['theme']} for s in pending[:capacity]],
         inspect_urls=decision.inspect_urls,coverage_gaps=decision.coverage_gaps,use_high_reasoning=decision.use_high_reasoning)
