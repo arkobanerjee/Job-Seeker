@@ -7,6 +7,7 @@ import socket
 import threading
 import re
 import hashlib
+import time
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import urlsplit, urlunsplit, urljoin
@@ -31,6 +32,18 @@ def public_addresses(host):
     return addresses
 
 def public_get(url):
+    from . import telemetry as audit
+    state=audit.ACTIVE.get();started=time.monotonic()
+    row=audit.start(state,'http','robots' if urlsplit(url).path=='/robots.txt' else 'public_retrieval',url=url)
+    try:
+        result=_public_get(url)
+        audit.finish(state,row,'success' if result[1]==200 else 'unavailable',http_status=result[1],final_url=result[0],response_bytes=len(result[2].encode()),duration_ms=round((time.monotonic()-started)*1000,2))
+        return result
+    except Exception as exc:
+        audit.finish(state,row,'failed',error_type=type(exc).__name__,duration_ms=round((time.monotonic()-started)*1000,2))
+        raise
+
+def _public_get(url):
     """Pin connection to a validated IP while retaining TLS hostname validation."""
     for _ in range(4):
         url = normalized(url)
@@ -80,6 +93,27 @@ class SourceTools:
         self.lock=threading.RLock()
 
     def search(self, query):
+        from . import telemetry as audit
+        state=getattr(self,'audit_state',None) or audit.ACTIVE.get()
+        row=audit.search_start(state,query);started=time.monotonic()
+        self._search_receipt=row
+        try:
+            cached=query in self.cache
+            result=self._search(query)
+            audit.finish(state,row,'cached' if cached else 'rejected' if isinstance(result,dict) else 'success',
+                results=(row or {}).get('results',result if isinstance(result,list) else []),
+                error=result.get('error') if isinstance(result,dict) else None,
+                observed_estimate_usd=0 if cached or isinstance(result,dict) else .008,
+                duration_ms=round((time.monotonic()-started)*1000,2))
+            self.persist()
+            return result
+        except Exception as exc:
+            if row is not None and 'reservation_id' not in row:row['observed_estimate_usd']=0
+            audit.finish(state,row,'blocked' if type(exc).__name__.endswith('LimitExceeded') else 'failed',error_type=type(exc).__name__,duration_ms=round((time.monotonic()-started)*1000,2))
+            self.persist();raise
+        finally:self._search_receipt=None
+
+    def _search(self, query):
         import httpx
         if not query.strip() or len(query)>350:
             return {"error":"Query must contain 1–350 characters"}
@@ -90,6 +124,7 @@ class SourceTools:
             if self.searches>=self.max_searches: return {"error":"Search limit reached; use available evidence or finish"}
             self.searches+=1
             reservation=self.ledger.reserve("tavily_basic",0.008)
+            if getattr(self,'_search_receipt',None) is not None:self._search_receipt.update(reservation_id=reservation,reserved_usd=.008)
             self.persist()
         try:
             with httpx.Client(timeout=35,trust_env=False) as client:
@@ -106,16 +141,36 @@ class SourceTools:
             raise ServiceFailure("Tavily request failed; inspect connection/configuration before retrying") from None
         with self.lock:
             results=[]
+            returned=[]
             for item in data.get("results",[]):
+                receipt={'rank':len(returned)+1,'url':str(item.get('url','')),'title':str(item.get('title','')),'snippet':str(item.get('content','')),'score':item.get('score')}
                 try: url=normalized(item["url"])
-                except (ValueError,KeyError): continue
+                except (ValueError,KeyError):
+                    returned.append({**receipt,'accepted':False,'rejection_reason':'Unsupported source URL'});continue
+                returned.append({**receipt,'url':url,'accepted':True})
                 self.allowed.add(url)
                 results.append({"url":url,"title":str(item.get("title",""))[:250],"snippet":str(item.get("content",""))[:1500]})
+            if getattr(self,'_search_receipt',None) is not None:self._search_receipt.update(results=returned,provider_usage=data.get('usage'),provider_request_id=data.get('request_id'))
             self.events.append({"type":"search","query":query,"count":len(results)})
             self.cache[query]=results; self.persist()
             return results
 
     def fetch(self,url):
+        from . import telemetry as audit
+        state=getattr(self,'audit_state',None) or audit.ACTIVE.get();started=time.monotonic()
+        cached=url in self.records
+        row=audit.start(state,'source','fetch',url=url)
+        try:
+            result=self._fetch(url)
+            status='cached' if cached else 'success' if result.get('http_status')==200 else 'unavailable' if url in self.records else 'rejected'
+            audit.finish(state,row,status,http_status=result.get('http_status'),source_id=result.get('source_id'),
+                ats_provider=result.get('ats_provider'),api_url=result.get('api_url'),
+                text_bytes=len(result.get('text','').encode()),duration_ms=round((time.monotonic()-started)*1000,2))
+            self.persist();return result
+        except Exception as exc:
+            audit.finish(state,row,'failed',error_type=type(exc).__name__,duration_ms=round((time.monotonic()-started)*1000,2));raise
+
+    def _fetch(self,url):
         try: url=normalized(url)
         except ValueError: return {"error":"Unsupported URL"}
         with self.lock:

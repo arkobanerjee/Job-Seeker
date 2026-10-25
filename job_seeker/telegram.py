@@ -30,6 +30,18 @@ def notify(result,on_checkpoint=None):
     return outbox.deliver(ident,before_send=on_checkpoint)
 
 def send(text,force_reply=False):
+    from . import telemetry as audit
+    import time
+    state=audit.ACTIVE.get();started=time.monotonic()
+    row=audit.start(state,'telegram','delivery',message_bytes=len(text.encode()),force_reply=force_reply)
+    try:
+        result=_send(text,force_reply)
+        audit.finish(state,row,'success',duration_ms=round((time.monotonic()-started)*1000,2))
+        return result
+    except Exception as exc:
+        audit.finish(state,row,'uncertain' if isinstance(exc,DeliveryUncertain) else 'failed',error_type=type(exc).__name__,duration_ms=round((time.monotonic()-started)*1000,2));raise
+
+def _send(text,force_reply=False):
     token=os.getenv("TELEGRAM_BOT_TOKEN","")
     chat=os.getenv("TELEGRAM_CHAT_ID","")
     if not token or not chat or not chat.lstrip("-").isdigit(): raise ValueError("Telegram owner is not configured")

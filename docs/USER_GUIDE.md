@@ -1,5 +1,8 @@
 # Operating your Job Seeker
 
+For query revision history, complete search-result snapshots, API cost receipts
+and JSON/CSV downloads, see [Search and API evaluation logs](API_EVALUATION_LOGS.md).
+
 Open https://job-seeker.arko-bbanerjee.workers.dev and sign in with your dashboard password. Keep the password and API credentials private.
 
 ## Normal routine

@@ -17,6 +17,7 @@ def run_history(root):
             'observed_estimate_usd':result.get('budget',{}).get('observed_estimate_usd'),
             'stop_reason':state.get('stop_reason'),'unread_pages':sum(x.get('url') not in state.get('pages_done',[]) for x in state.get('queue',[])),
             'trace':trace_summary(state),'activity':activity_summary(state),'limitations':state.get('limitations',[])})
+        rows[-1]['evaluation_available']=(checkpoint.parent/'evaluation.json').exists()
     rows=sorted(rows,key=lambda x:x.get('started_at') or '',reverse=True)[:250]
     remaining=600000
     for row in rows:

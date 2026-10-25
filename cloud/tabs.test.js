@@ -3,6 +3,18 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {page} from './page.js';
 
+test('evaluation view loads complete result receipts and exports safe comparison CSV',async()=>{
+ const nodes=new Map();const make=tag=>({tag,children:[],attributes:{},append(...items){this.children.push(...items)},replaceChildren(){this.children=[]},setAttribute(k,v){this.attributes[k]=v}});
+ const document={createElement:make,getElementById(id){if(!nodes.has(id))nodes.set(id,make('div'));return nodes.get(id)}};
+ const data={note:'Attribution is not causal improvement',by_purpose:{'tavily:search':{attempts:2,success:2,failed_or_unresolved:0,observed_estimate_usd:.016,cost_unknown_calls:0}},calls:[{provider:'openai',purpose:'planning',status:'success'}],searches:[{id:'second',query:'=FORMULA',parent_search_id:'first',change_reason:'Too many senior roles',expected_improvement:'Find junior roles',status:'success',metrics:{returned_results:1,new_result_urls:1,overlapping_result_urls:0,fetched_pages:1,unread_result_urls:0,vacancies:1,additional_vacancies:1,additional_qualified_companies:0},results:[{rank:1,title:'Junior AI engineer',url:'https://example.com/job',snippet:'Complete search snippet'}]}]};
+ const context=vm.createContext({document,fetch:async()=>({ok:true,json:async()=>data})});vm.runInContext(page.split('<script>')[1].split('</script>')[0],context);
+ context.card=make('article');context.run={run_id:'a'.repeat(32),evaluation_available:true};vm.runInContext('renderEvaluation(run,card)',context);
+ const detail=context.card.children[0];await detail.children.find(n=>n.tag==='button').onclick();
+ const texts=n=>[n.textContent||'',...n.children.flatMap(texts)];const output=texts(detail).join(' ');
+ for(const value of ['Too many senior roles','Find junior roles','Complete search snippet','additional vacancy candidates','Download full JSON log'])assert.ok(output.includes(value),value);
+ context.data=data;assert.ok(vm.runInContext('evaluationCsv(data)',context).includes("'=FORMULA"));
+});
+
 test('opportunity tabs switch panels and job filters without resetting on refresh',()=>{
  const nodes=new Map();
  const document={getElementById(id){if(!nodes.has(id))nodes.set(id,{hidden:false,attributes:{},setAttribute(k,v){this.attributes[k]=v}});return nodes.get(id)}};

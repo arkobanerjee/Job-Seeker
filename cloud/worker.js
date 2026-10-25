@@ -16,6 +16,31 @@ export default {
     if(!env.APP_TOKEN || request.headers.get('Authorization')!==`Bearer ${env.APP_TOKEN}`) return reply({error:'Unauthorized'},401);
     if(request.headers.get('Origin') && request.headers.get('Origin')!==u.origin) return reply({error:'Invalid origin'},403);
     try {
+      if(u.pathname.startsWith('/api/evaluation/')) {
+        const id=u.pathname.slice('/api/evaluation/'.length);
+        if(!/^[a-f0-9]{32}$/.test(id))return reply({error:'Invalid run ID'},400);
+        const key='evaluation/'+id+'.json';
+        if(request.method==='GET'){
+          const object=await env.STATE.get(key);return object?reply(await object.json()):reply({error:'No evaluation log recorded for this run'},404);
+        }
+        if(request.method==='PUT'){
+          const raw=await request.text();if(raw.length>2000000)return reply({error:'Evaluation log exceeds size limit'},413);
+          const body=JSON.parse(raw);
+          if(body.schema_version!==1||body.run_id!==id||!Array.isArray(body.searches)||!Array.isArray(body.calls)||!body.by_purpose)return reply({error:'Invalid evaluation log'},400);
+          const previous=await env.STATE.get(key);
+          if(previous){
+            const old=await previous.json();
+            // Research rollback must not erase already recorded API attempts.
+            const merge=(before,after)=>{const rows=new Map((before||[]).map(r=>[r.id,r]));for(const r of after||[]){const prior=rows.get(r.id);rows.set(r.id,prior&&(prior.finished_at||'')>(r.finished_at||'')?prior:r)}return [...rows.values()]};
+            body.calls=merge(old.calls,body.calls);body.searches=merge(old.searches,body.searches);
+            body.by_purpose={};for(const c of body.calls){const k=c.provider+':'+c.purpose,m=body.by_purpose[k]??={attempts:0,success:0,failed_or_unresolved:0,observed_estimate_usd:0,cost_unknown_calls:0,duration_ms:0};m.attempts++;m.success+=['success','cached'].includes(c.status)?1:0;m.failed_or_unresolved+=['failed','started','output_limit','invalid_output','interrupted','uncertain','unavailable'].includes(c.status)?1:0;if(c.observed_estimate_usd!=null)m.observed_estimate_usd+=c.observed_estimate_usd;else if(['openai','anthropic','tavily'].includes(c.provider))m.cost_unknown_calls++;m.duration_ms+=c.duration_ms||0}
+            body.receipt_retention='Prior API receipts retained across research restores; attribution metrics describe their saved research snapshots.';
+          }
+          if(JSON.stringify(body).length>2000000)return reply({error:'Retained evaluation log exceeds size limit; prior log preserved'},413);
+          await env.STATE.put(key,JSON.stringify(body));return reply({saved:true});
+        }
+        return reply({error:'Method not allowed'},405);
+      }
       const companyResponse=await opportunityApi(request,env,u.pathname);if(companyResponse)return companyResponse;
       const backupResponse=await backupApi(request,env,u.pathname);if(backupResponse)return backupResponse;
       const archiveResponse=await archivesApi(request,env,u.pathname);if(archiveResponse)return archiveResponse;

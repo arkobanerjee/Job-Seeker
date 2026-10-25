@@ -125,8 +125,13 @@ class LiveTools:
     def __init__(self, settings, prompt, ledger, folder):
         self.settings, self.prompt, self.ledger = settings, prompt, ledger
         folder.mkdir(parents=True, exist_ok=True)
-        self.state = dict(model_calls=0, folder=str(folder), usage=[])
-        self.tools = SourceTools(ledger, lambda:None, max_searches=1, max_fetches=settings.limits.max_pages)
+        self.state = dict(model_calls=0, folder=str(folder), usage=[],run_id=folder.name,mode='comparison',api_log=[],search_log=[])
+        def persist():
+            from job_seeker.telemetry import save as save_evaluation
+            self.state.update(sources=self.tools.records,cache=self.tools.cache)
+            save_evaluation(self.state)
+        self.tools = SourceTools(ledger, persist, max_searches=1, max_fetches=settings.limits.max_pages)
+        self.tools.audit_state=self.state
 
     def search(self, query):
         return self.tools.search(query)

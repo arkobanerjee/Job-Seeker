@@ -21,6 +21,7 @@ def run_adaptive(settings,state,prompt,policy,ledger,sources,root,*,invoke,enque
             'findings':[{k:f.get(k) for k in ('company','title','kind','fit','rejection_reasons')} for f in state['findings'][-12:]],
             'signals':[{k:s.get(k) for k in ('company','kind','title','url')} for s in state['signals'][-12:]],
             'attempted_queries':state.get('attempted_queries',[]),
+            'search_history':[{'id':s['id'],'query':s['query'],'status':s['status'],'results':len(s.get('results',[]))} for s in state.get('search_log',[])][-20:],
             'assessment_failures':state.get('assessment_failures',[])[-12:],
             'questions_remaining':max(0,settings.clarification.max_questions_per_run-len(state.get('clarification_questions',[]))) if settings.clarification.enabled else None,
             'previous_plan':state.get('last_plan'), 'candidate_answers':state.get('planner_answers',[]),

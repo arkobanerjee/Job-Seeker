@@ -13,6 +13,30 @@ class R2 {
 }
 function env(){return {STATE:new R2(),APP_TOKEN:'test-only'}}
 const req=(path,method='GET',body,token='test-only')=>new Request('https://jobs.example'+path,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+test('evaluation logs require authentication, validate run IDs and survive state replacement',async()=>{
+ const e=env(),id='a'.repeat(32),path='/api/evaluation/'+id;
+ assert.equal((await worker.fetch(req(path,'GET',null,'wrong'),e)).status,401);
+ assert.equal((await worker.fetch(req('/api/evaluation/not-a-run'),e)).status,400);
+ assert.equal((await worker.fetch(req(path),e)).status,404);
+ const log={schema_version:1,run_id:id,searches:[{query:'AI Poland',results:[{url:'https://example.com/job',snippet:'saved'}]}],calls:[],by_purpose:{}};
+ assert.equal((await worker.fetch(req(path,'PUT',{...log,run_id:'b'.repeat(32)}),e)).status,400);
+ assert.equal((await worker.fetch(req(path,'PUT',log),e)).status,200);
+ await e.STATE.put('state/latest.zip','new snapshot');
+ assert.deepEqual(await (await worker.fetch(req(path),e)).json(),log);
+ assert.equal((await worker.fetch(req(path,'DELETE'),e)).status,405);
+ assert.equal((await worker.fetch(req(path,'PUT',{...log,padding:'x'.repeat(2000001)}),e)).status,413);
+});
+
+test('restoring research cannot erase finished API receipts',async()=>{
+ const e=env(),id='b'.repeat(32),path='/api/evaluation/'+id;
+ const base={schema_version:1,run_id:id,searches:[],by_purpose:{}};
+ const complete={id:'call1',provider:'tavily',purpose:'search',status:'success',finished_at:'2026-10-25T10:00:00Z',observed_estimate_usd:.008};
+ await worker.fetch(req(path,'PUT',{...base,calls:[complete]}),e);
+ await worker.fetch(req(path,'PUT',{...base,calls:[{id:'call1',provider:'tavily',purpose:'search',status:'started'}]}),e);
+ let result=await (await worker.fetch(req(path),e)).json();assert.equal(result.calls[0].status,'success');
+ await worker.fetch(req(path,'PUT',{...base,calls:[]}),e);
+ result=await (await worker.fetch(req(path),e)).json();assert.equal(result.calls.length,1);assert.equal(result.by_purpose['tavily:search'].observed_estimate_usd,.008);
+});
 test('private data requires authentication',async()=>{assert.equal((await worker.fetch(req('/api/catalog','GET',null,'wrong'),env())).status,401)});
 test('board observations dispatch a distinct workflow mode',async()=>{
  const e=env();e.GITHUB_TOKEN='dispatch';e.GITHUB_REPOSITORY='owner/repo';e.GITHUB_REF='main';const old=globalThis.fetch;
