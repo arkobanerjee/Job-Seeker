@@ -80,6 +80,20 @@ Tune `max_rounds`, `queries_per_round`, `pages_per_round`, `max_minutes` and
 limits. Reaching a search limit still permits inspecting already found pages.
 A research round with no new finding or company signal counts as stalled.
 
+Control runtime in `config.toml` (dashboard: Preferences & background → Advanced
+search settings):
+
+```toml
+[adaptive]
+max_minutes = 30
+```
+
+The supported range is 1–30 minutes. This applies to new adaptive job and company
+discovery runs; saved runs retain their original configuration and deadline.
+The hosted workflow has a separate 40-minute job timeout to allow setup and final
+checkpointing. Spending, page, search, model-call and round limits still apply,
+so a run can stop earlier. Raising runtime does not raise the spending allowance.
+
 Questions arrive through the existing Telegram reply interface. Waiting pauses
 the time allowance, while all spending and counters remain attached to the saved
 run. Stops preserve unfinished work and an explicit stop reason. The JSON run

@@ -6,6 +6,16 @@ from job_seeker.settings import Limits
 
 
 class AdaptiveTests(unittest.TestCase):
+    def test_thirty_minute_runtime_is_configurable_and_checked_at_boundary(self):
+        policy=AdaptiveSettings(max_minutes=30)
+        state={'started_at':'2026-10-24T08:00:00+00:00'}
+        self.assertIsNone(stop_reason(state,policy,Limits(),datetime(2026,10,24,8,29,59,tzinfo=timezone.utc)))
+        self.assertEqual(stop_reason(state,policy,Limits(),datetime(2026,10,24,8,30,tzinfo=timezone.utc)),'time_limit')
+        for value in [0,31]:
+            with self.assertRaises(ValidationError):AdaptiveSettings(max_minutes=value)
+        # Older snapshots without an explicit value retain their original default.
+        self.assertEqual(AdaptiveSettings().max_minutes,20)
+
     def test_novel_queries_observed_links_and_remaining_capacity(self):
         decision = ResearchDecision(action='research', explanation='Try another title',
             queries=[{'track':'ai','query':q} for q in [' RAG  Germany ', 'ML Germany', 'ml germany', 'AI Europe']],
