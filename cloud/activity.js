@@ -5,7 +5,7 @@ export function reconcileActivity(runs, executions, checkedAt=new Date().toISOSt
   const latest=runs[0]||null;
   const linked=latest && executions.find(e=> latest.execution_id
     ? String(e.id)===String(latest.execution_id)
-    : Date.parse(e.created_at)<=Date.parse(latest.started_at) && Date.parse(e.updated_at)+5000>=Date.parse(latest.started_at));
+    : e.timing_verified!==false && Date.parse(e.job_started_at||e.created_at)<=Date.parse(latest.started_at) && Date.parse(e.job_completed_at||e.updated_at)+5000>=Date.parse(latest.started_at));
   let current=latest?{...latest}:null;
   if(current?.status==='running') {
     if(!linked) current={...current,status:'unknown',status_note:'The saved run says running, but its worker could not be verified.'};
@@ -42,6 +42,21 @@ export async function activitySnapshot(env) {
       if(['discovery','company','monitor','boards','backup','restore','diagnostics','maintenance','notifications','scheduled'].includes(mode))value.mode=mode;
       return value;
     });
+    // Queued workflow creation times overlap. For older checkpoints without an
+    // execution ID, use actual job intervals rather than dispatch timestamps.
+    if(runs[0]&&!runs[0].execution_id){
+      const stamp=Date.parse(runs[0].started_at);
+      await Promise.all(executions.filter(e=>Date.parse(e.created_at)<=stamp&&Date.parse(e.updated_at)+5000>=stamp).map(async e=>{
+        e.timing_verified=false;
+        try{
+          const jobs=await fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/runs/${e.id}/jobs`,{
+            headers:{Authorization:`Bearer ${env.GITHUB_TOKEN}`,'User-Agent':'Job-Seeker',Accept:'application/vnd.github+json'},signal:AbortSignal.timeout(5000)});
+          if(!jobs.ok)return;
+          const body=await jobs.json(),job=body.jobs?.find(j=>j.name==='research');
+          if(job?.started_at){e.job_started_at=job.started_at;e.job_completed_at=job.completed_at;e.timing_verified=true}
+        }catch{}
+      }));
+    }
     const snapshot=reconcileActivity(runs,executions);
     if(snapshot.current?.status==='running')snapshot.control_request=(await readControl(env,snapshot.current.run_id)).action;
     return snapshot;
