@@ -7,6 +7,14 @@ const execution={id:123,status:'completed',conclusion:'failure',created_at:'2026
 test('a stopped worker cannot leave its saved checkpoint running',()=>{
  const a=reconcileActivity([run],[execution]);assert.equal(a.current.status,'failed');assert.match(a.current.failure_reason,/first search/);assert.equal(a.current.finished_at,execution.updated_at);assert.equal(run.status,'running');
 });
+
+test('queued diagnostics cannot be mistaken for the earlier failed research job',()=>{
+ const current={...run,started_at:'2026-10-27T14:27:44Z'};
+ const diagnostics={...execution,id:2,conclusion:'success',created_at:'2026-10-27T14:27:29Z',updated_at:'2026-10-27T14:28:14Z',job_started_at:'2026-10-27T14:27:56Z',job_completed_at:'2026-10-27T14:28:12Z',timing_verified:true};
+ const research={...execution,id:1,created_at:'2026-10-27T14:27:16Z',updated_at:'2026-10-27T14:27:50Z',job_started_at:'2026-10-27T14:27:20Z',job_completed_at:'2026-10-27T14:27:48Z',timing_verified:true,html_url:'https://github.com/owner/repo/actions/runs/1'};
+ const a=reconcileActivity([current],[diagnostics,research]);assert.equal(a.current.status,'failed');assert.equal(a.current.execution_url,research.html_url);
+ assert.equal(reconcileActivity([current],[{...research,timing_verified:false}]).current.status,'unknown');
+});
 test('unmatched historical checkpoint is unknown, never a confirmed live run',()=>{
  assert.equal(reconcileActivity([run],[]).current.status,'unknown');
  const unrelated={...execution,created_at:'2026-10-28T00:00:00Z',updated_at:'2026-10-28T01:00:00Z'};
