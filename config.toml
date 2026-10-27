@@ -21,7 +21,8 @@ enabled=false
 max_rounds = 4
 queries_per_round = 3
 pages_per_round = 6
-max_minutes = 20
+# Runtime allowance for new adaptive job/company discovery runs (1–30 minutes).
+max_minutes = 30
 max_stalled_rounds = 2
 planning_effort = "medium"
 assessment_effort = "medium"

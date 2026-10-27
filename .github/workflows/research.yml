@@ -34,7 +34,8 @@ jobs:
   research:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Allow 30 minutes of research plus setup, checkpointing and notifications.
+    timeout-minutes: 40
     environment: production
     steps:
       - uses: actions/checkout@v4

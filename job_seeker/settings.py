@@ -17,7 +17,7 @@ class AdaptiveSettings(Strict):
     max_rounds: int = Field(default=4, ge=1, le=8)
     queries_per_round: int = Field(default=3, ge=1, le=5)
     pages_per_round: int = Field(default=6, ge=1, le=10)
-    max_minutes: int = Field(default=20, ge=1, le=20)
+    max_minutes: int = Field(default=20, ge=1, le=30)
     max_stalled_rounds: int = Field(default=2, ge=1, le=4)
     planning_effort: Literal['medium', 'high'] = 'medium'
     assessment_effort: Literal['medium', 'high'] = 'medium'
