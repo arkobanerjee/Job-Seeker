@@ -49,6 +49,24 @@ test('company discovery dispatches its own workflow mode',async()=>{
  globalThis.fetch=async(url,options)=>{assert.deepEqual(JSON.parse(options.body).inputs,{mode:'company'});return new Response(null,{status:204})};
  try{assert.equal((await worker.fetch(req('/api/run','POST',{mode:'company'}),e)).status,200)}finally{globalThis.fetch=old}
 });
+
+test('a retry with the same receipt cannot queue duplicate research',async()=>{
+ const e=env();e.GITHUB_TOKEN='dispatch';e.GITHUB_REPOSITORY='owner/repo';e.GITHUB_REF='main';const old=globalThis.fetch;let calls=0;
+ globalThis.fetch=async()=>{calls++;return new Response(null,{status:204})};
+ try{const body={mode:'company',request_id:'a'.repeat(32)};
+ assert.equal((await worker.fetch(req('/api/run','POST',body),e)).status,200);
+ assert.equal((await (await worker.fetch(req('/api/run','POST',body),e)).json()).duplicate,true);
+ assert.equal(calls,1);
+ assert.equal((await worker.fetch(req('/api/run','POST',{...body,mode:'discovery'}),e)).status,409);
+ }finally{globalThis.fetch=old}
+});
+
+test('an uncertain dispatch receipt never claims confirmed queueing',async()=>{
+ const e=env();e.GITHUB_TOKEN='dispatch';
+ await e.STATE.put('dispatch/'+('b'.repeat(32))+'.json',JSON.stringify({mode:'company',backup_id:null,status:'dispatching'}));
+ const response=await worker.fetch(req('/api/run','POST',{mode:'company',request_id:'b'.repeat(32)}),e);
+ assert.equal(response.status,409);assert.equal((await response.json()).uncertain,true);
+});
 test('cold evidence archives are private, immutable and idempotent',async()=>{
  const e=env(),id='d'.repeat(32),data='synthetic archive';
  const upload=body=>new Request('https://jobs.example/api/run-archive/'+id,{method:'PUT',headers:{Authorization:'Bearer test-only','Content-Length':String(body.length)},body});

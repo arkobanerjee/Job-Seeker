@@ -1,4 +1,5 @@
 import {opportunityApi} from './opportunities.js';
+import {activitySnapshot} from './activity.js';
 // One-owner control plane. All data endpoints require a high-entropy bearer secret.
 import { page } from './page.js';
 import {backupApi} from './backups.js';
@@ -16,6 +17,7 @@ export default {
     if(!env.APP_TOKEN || request.headers.get('Authorization')!==`Bearer ${env.APP_TOKEN}`) return reply({error:'Unauthorized'},401);
     if(request.headers.get('Origin') && request.headers.get('Origin')!==u.origin) return reply({error:'Invalid origin'},403);
     try {
+      if(u.pathname==='/api/activity' && request.method==='GET')return reply(await activitySnapshot(env));
       if(u.pathname.startsWith('/api/evaluation/')) {
         const id=u.pathname.slice('/api/evaluation/'.length);
         if(!/^[a-f0-9]{32}$/.test(id))return reply({error:'Invalid run ID'},400);
@@ -97,8 +99,22 @@ export default {
         const body=await request.json(),mode=body.mode||'discovery';
         if(!['discovery','company','monitor','notifications','backup','restore','diagnostics','maintenance','boards'].includes(mode))return reply({error:'Invalid research mode'},400);
         const inputs={mode};if(mode==='restore'){if(!/^[a-f0-9]{32}$/.test(body.backup_id))return reply({error:'Invalid backup ID'},400);inputs.backup_id=body.backup_id}
+        let dispatchKey=null;
+        if(body.request_id){
+          if(!/^[a-zA-Z0-9_-]{16,64}$/.test(body.request_id))return reply({error:'Invalid request receipt'},400);
+          dispatchKey='dispatch/'+body.request_id+'.json';
+          const claimed=await env.STATE.put(dispatchKey,JSON.stringify({mode,backup_id:body.backup_id||null,status:'dispatching'}),{onlyIf:{etagDoesNotMatch:'*'}});
+          if(!claimed){
+            const previous=await (await env.STATE.get(dispatchKey)).json();
+            if(previous.mode!==mode||previous.backup_id!==(body.backup_id||null))return reply({error:'Request receipt belongs to a different operation'},409);
+            return previous.status==='accepted'?reply({queued:true,duplicate:true}):reply({error:'This request may already have been sent. Check execution status before retrying.',uncertain:true},409);
+          }
+          inputs.request_id=body.request_id;
+        }
         const response=await fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/research.yml/dispatches`,{
           method:'POST',headers:{Authorization:`Bearer ${env.GITHUB_TOKEN}`,'User-Agent':'Job-Seeker','Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:env.GITHUB_REF,inputs})});
+        if(response.status!==204&&dispatchKey)await env.STATE.delete(dispatchKey);
+        if(response.status===204&&dispatchKey)await env.STATE.put(dispatchKey,JSON.stringify({mode,backup_id:body.backup_id||null,status:'accepted',at:new Date().toISOString()}));
         return response.status===204 ? reply({queued:true}) : reply({error:'GitHub dispatch failed',status:response.status},502);
       }
       if(u.pathname==='/api/decisions' && request.method==='GET') {

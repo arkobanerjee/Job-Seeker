@@ -1,1 +1,1 @@
-{"private":true,"type":"module","scripts":{"test":"node --test worker.test.js"}}
+{"private":true,"type":"module","scripts":{"test":"node --test *.test.js"},"devDependencies":{"jsdom":"^30.1.3"}}

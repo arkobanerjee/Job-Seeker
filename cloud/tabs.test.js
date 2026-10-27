@@ -1,80 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import vm from 'node:vm';
-import {page} from './page.js';
-
-test('evaluation view loads complete result receipts and exports safe comparison CSV',async()=>{
- const nodes=new Map();const make=tag=>({tag,children:[],attributes:{},append(...items){this.children.push(...items)},replaceChildren(){this.children=[]},setAttribute(k,v){this.attributes[k]=v}});
- const document={createElement:make,getElementById(id){if(!nodes.has(id))nodes.set(id,make('div'));return nodes.get(id)}};
- const data={note:'Attribution is not causal improvement',by_purpose:{'tavily:search':{attempts:2,success:2,failed_or_unresolved:0,observed_estimate_usd:.016,cost_unknown_calls:0}},calls:[{provider:'openai',purpose:'planning',status:'success'}],searches:[{id:'second',query:'=FORMULA',parent_search_id:'first',change_reason:'Too many senior roles',expected_improvement:'Find junior roles',status:'success',metrics:{returned_results:1,new_result_urls:1,overlapping_result_urls:0,fetched_pages:1,unread_result_urls:0,vacancies:1,additional_vacancies:1,additional_qualified_companies:0},results:[{rank:1,title:'Junior AI engineer',url:'https://example.com/job',snippet:'Complete search snippet'}]}]};
- const context=vm.createContext({document,fetch:async()=>({ok:true,json:async()=>data})});vm.runInContext(page.split('<script>')[1].split('</script>')[0],context);
- context.card=make('article');context.run={run_id:'a'.repeat(32),evaluation_available:true};vm.runInContext('renderEvaluation(run,card)',context);
- const detail=context.card.children[0];await detail.children.find(n=>n.tag==='button').onclick();
- const texts=n=>[n.textContent||'',...n.children.flatMap(texts)];const output=texts(detail).join(' ');
- for(const value of ['Too many senior roles','Find junior roles','Complete search snippet','additional vacancy candidates','Download full JSON log'])assert.ok(output.includes(value),value);
- context.data=data;assert.ok(vm.runInContext('evaluationCsv(data)',context).includes("'=FORMULA"));
+import {browser} from './test-browser.js';
+test('evaluation view preserves full receipts and safe spreadsheet exports',async t=>{
+ const data={note:'Attribution is not causal improvement',by_purpose:{},calls:[],searches:[{id:'second',query:'=FORMULA',parent_search_id:'first',change_reason:'Too many senior roles',expected_improvement:'Find junior roles',status:'success',metrics:{},results:[{rank:1,title:'Junior AI engineer',url:'https://example.com/job',snippet:'Complete search snippet'}]}]};
+ const h=browser(t,async()=>({ok:true,json:async()=>data}));h.window.card=h.document.createElement('article');h.window.run={run_id:'a'.repeat(32),evaluation_available:true};h.eval('renderEvaluation(run,card)');await h.window.card.querySelector('button').onclick();for(const value of ['Too many senior roles','Find junior roles','Complete search snippet','Download full JSON log'])assert.ok(h.window.card.textContent.includes(value),value);h.window.data=data;assert.ok(h.eval('evaluationCsv(data)').includes("'=FORMULA"));
+});
+test('tabs preserve selection and support keyboard navigation',t=>{
+ const h=browser(t);h.document.getElementById('companiesTab').click();assert.equal(h.document.getElementById('jobsPanel').hidden,true);assert.equal(h.document.getElementById('companyOpportunities').hidden,false);assert.equal(h.document.getElementById('companiesTab').getAttribute('aria-selected'),'true');
+ h.document.getElementById('opportunityTabs').dispatchEvent(new h.window.KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));assert.equal(h.document.getElementById('jobsPanel').hidden,false);assert.equal(h.document.getElementById('jobsTab').tabIndex,0);
+});
+test('company filters separate rejected evidence and preserve editable notes',async t=>{
+ const rows=['qualified','investigate','rejected'].map((status,i)=>({id:String(i).repeat(24),company:'Example '+i,title:status,label:status,qualification_status:status,evidence_count:1,decision:{status:'new',note:''}}));const h=browser(t,async()=>({ok:true,json:async()=>rows}));await h.eval('renderCompanyOpportunities()');assert.equal(h.document.querySelectorAll('.company-card').length,2);const card=h.document.querySelector('.company-card');card.open=true;card.querySelector('textarea').value='My draft';card.querySelector('textarea').oninput();h.document.getElementById('companyFilter').value='all';h.eval('renderCompanyRows()');assert.equal(h.document.querySelectorAll('.company-card').length,3);assert.equal(h.document.querySelector('.company-card textarea').value,'My draft');assert.equal(h.document.querySelector('.company-card').open,true);
+});
+test('dismissed companies are hidden by default with evidence and prior notes retained',async t=>{
+ const row={id:'a'.repeat(24),company:'Example',title:'Funding',labels:['Reported funding'],qualification_status:'qualified',decision:{status:'dismissed',note:'Already checked'},previous_decisions:[{status:'watch',note:'Earlier note'}],evidence_count:1,source_count:1,evidence_items:[{label:'Reported funding',qualification_status:'qualified',title:'Funding',evidence:'An exact quote',sources:[{url:'https://example.com/news',run_id:'one'}]}]};const h=browser(t,async()=>({ok:true,json:async()=>[row]}));await h.eval('renderCompanyOpportunities()');assert.equal(h.document.querySelectorAll('.company-card').length,0);h.document.getElementById('companyFilter').value='dismissed';h.eval('renderCompanyRows()');const card=h.document.querySelector('.company-card');assert.equal(card.querySelector('textarea').value,'Already checked');assert.match(card.textContent,/Earlier note/);assert.match(card.textContent,/An exact quote/);
+});
+test('research timeline reports saved evidence and omissions honestly',t=>{
+ const h=browser(t);h.window.card=h.document.createElement('article');h.window.run={stop_reason:'page_limit',unread_pages:3,trace:{scope:'partial_saved_actions',omitted_events:2,note:'Started actions have uncertain outcomes',events:[{sequence:3,type:'plan',explanation:'Try another title',queries:['junior ML Germany'],coverage_gaps:['Data roles']},{sequence:4,type:'page',url:'https://example.com/expired',http_status:410},{sequence:5,type:'failure',error_type:'ServiceFailure'}]}};h.eval('renderResearchTrace(run,card)');for(const value of ['Page limit reached','3 discovered pages remain unread','Partial historical trace','2 earlier events omitted','junior ML Germany','Coverage gap: Data roles','HTTP 410','ServiceFailure'])assert.ok(h.window.card.textContent.includes(value),value);
+ h.window.card=h.document.createElement('article');h.window.run={};h.eval('renderResearchTrace(run,card)');assert.match(h.window.card.textContent,/No chronological action receipts/);
 });
 
-test('opportunity tabs switch panels and job filters without resetting on refresh',()=>{
- const nodes=new Map();
- const document={getElementById(id){if(!nodes.has(id))nodes.set(id,{hidden:false,attributes:{},setAttribute(k,v){this.attributes[k]=v}});return nodes.get(id)}};
- const context=vm.createContext({document});
- vm.runInContext(page.split('<script>')[1].split('</script>')[0],context);
- nodes.get('companiesTab').onclick();
- assert.equal(nodes.get('jobsPanel').hidden,true);
- assert.equal(nodes.get('companyOpportunities').hidden,false);
- assert.equal(nodes.get('category').hidden,true);
- assert.equal(nodes.get('companiesTab').attributes['aria-selected'],'true');
- vm.runInContext('selectOpportunityTab(activeTab)',context);
- assert.equal(nodes.get('companyOpportunities').hidden,false);
- nodes.get('jobsTab').onclick();
- assert.equal(nodes.get('jobsPanel').hidden,false);
- assert.equal(nodes.get('companyOpportunities').hidden,true);
- assert.equal(nodes.get('search').hidden,false);
+test('a queued request never inherits the previous run failure or counters',t=>{
+ const h=browser(t);h.window.snapshot={verified:true,current:{run_id:'a'.repeat(32),status:'failed',mode:'discovery',searches:3,pages:5,failure_reason:'Earlier failure',trace:{events:[]}},queued:[{id:1,status:'queued',mode:'company'}]};h.eval('activityData=snapshot;renderActivity()');
+ assert.equal(h.document.getElementById('activityState').textContent,'Queued');
+ assert.equal(h.document.getElementById('activityTitle').textContent,'Discovering companies');
+ assert.equal(h.document.getElementById('activityError').hidden,true);
+ assert.equal(h.document.getElementById('activityPages').textContent,'—');
 });
 
-test('weak and rejected company cards render in collapsed investigation section',async()=>{
- const nodes=new Map();
- const make=tag=>({tag,children:[],hidden:false,attributes:{},append(...items){this.children.push(...items)},replaceChildren(){this.children=[]},setAttribute(k,v){this.attributes[k]=v}});
- const document={createElement:make,getElementById(id){if(!nodes.has(id))nodes.set(id,make('div'));return nodes.get(id)}};
- const rows=['qualified','investigate','rejected'].map(status=>({company:'Example',title:status,label:status,qualification_status:status,decision:{status:'new',note:''}}));
- const context=vm.createContext({document,fetch:async()=>({ok:true,json:async()=>rows})});
- vm.runInContext(page.split('<script>')[1].split('</script>')[0],context);
- await vm.runInContext('renderCompanyOpportunities()',context);
- const root=nodes.get('companyRows'),review=root.children.find(n=>n.tag==='details');
- assert.equal(root.children.filter(n=>n.tag==='article').length,1);
- assert.equal(review.children.filter(n=>n.tag==='article').length,2);
- assert.equal(review.open,undefined);
-});
-
-test('dismissed companies stay out of the main queue with evidence and notes preserved',async()=>{
- const nodes=new Map();
- const make=tag=>({tag,children:[],hidden:false,attributes:{},append(...items){this.children.push(...items)},replaceChildren(){this.children=[]},setAttribute(k,v){this.attributes[k]=v}});
- const document={createElement:make,getElementById(id){if(!nodes.has(id))nodes.set(id,make('div'));return nodes.get(id)}};
- const row={company:'Example',title:'Funding',labels:['Reported funding'],qualification_status:'qualified',decision:{status:'dismissed',note:'Already checked'},previous_decisions:[{status:'watch',note:'Earlier note'}],evidence_count:1,source_count:2,evidence_items:[{label:'Reported funding',qualification_status:'qualified',title:'Funding',evidence:'An exact quote',sources:[{url:'https://example.com/news',run_id:'one'},{url:'https://copy.example/news',run_id:'two'}]}]};
- const context=vm.createContext({document,fetch:async()=>({ok:true,json:async()=>[row]})});
- vm.runInContext(page.split('<script>')[1].split('</script>')[0],context);
- await vm.runInContext('renderCompanyOpportunities()',context);
- const root=nodes.get('companyRows'),review=root.children.find(n=>n.tag==='details');
- assert.equal(root.children.filter(n=>n.tag==='article').length,0);
- const card=review.children.find(n=>n.tag==='article');
- assert.equal(card.children.filter(n=>n.tag==='details').length,2);
- assert.equal(card.children.find(n=>n.tag==='textarea').value,'Already checked');
-});
-
-test('research timeline renders recorded queries, gaps, failures and truncation honestly',()=>{
- const nodes=new Map();
- const make=tag=>({tag,children:[],attributes:{},append(...items){this.children.push(...items)},setAttribute(k,v){this.attributes[k]=v}});
- const document={createElement:make,getElementById(id){if(!nodes.has(id))nodes.set(id,make('div'));return nodes.get(id)}};
- const context=vm.createContext({document});vm.runInContext(page.split('<script>')[1].split('</script>')[0],context);
- context.card=make('article');context.run={stop_reason:'page_limit',unread_pages:3,trace:{scope:'partial_saved_actions',omitted_events:2,note:'Started actions without end receipts have uncertain outcomes',events:[
-  {sequence:3,type:'plan',explanation:'Try another title',queries:['junior ML Germany'],coverage_gaps:['Data roles']},
-  {sequence:4,type:'page',url:'https://example.com/expired',http_status:410},
-  {sequence:5,type:'failure',error_type:'ServiceFailure'}]}};
- vm.runInContext('renderResearchTrace(run,card)',context);
- const texts=node=>[node.textContent||'',...node.children.flatMap(texts)];
- const output=texts(context.card).join(' ');
- for(const value of ['Page limit reached','3 discovered pages remain unread','Partial historical trace','2 earlier events omitted','junior ML Germany','Coverage gap: Data roles','HTTP 410','ServiceFailure'])assert.ok(output.includes(value),value);
- context.card=make('article');context.run={};vm.runInContext('renderResearchTrace(run,card)',context);
- assert.match(texts(context.card).join(' '),/No chronological action receipts/);
+test('refreshing operation history preserves a pending answer draft',async t=>{
+ const payload={questions:{questions:[{id:'q1',revision:1,prompt:'Which locations should I search?'}]},runs:[],notifications:[],backups:[]};
+ const h=browser(t,async url=>({ok:true,json:async()=>payload[url.split('/').pop()]}));await h.eval('renderOperations()');const answer=h.document.querySelector('#questionRows textarea');answer.value='Berlin and remote';answer.oninput();await h.eval('renderOperations()');assert.equal(h.document.querySelector('#questionRows textarea').value,'Berlin and remote');
 });

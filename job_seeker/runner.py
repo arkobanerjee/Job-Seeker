@@ -226,6 +226,8 @@ def _run(config,resume,on_checkpoint=None,control=None,operation="discovery"):
     state.setdefault("signals",[]);state.setdefault("rejected_signals",[])
     state.setdefault("competitor_leads",[]);state.setdefault("competitor_queries_done",[])
     def persist():
+        state['updated_at']=datetime.now(timezone.utc).isoformat()
+        if os.getenv('GITHUB_RUN_ID'):state['execution_id']=os.getenv('GITHUB_RUN_ID')
         state.update(sources=sources.records,events=sources.events,allowed=sorted(sources.allowed),cache=sources.cache,
                      searches=sources.searches,fetches=sources.fetches)
         write_json(folder/"checkpoint.json",state)
@@ -253,7 +255,8 @@ def _run(config,resume,on_checkpoint=None,control=None,operation="discovery"):
                 raise BudgetExceeded('Adaptive stop: '+reason)
     if state.get('waiting_since'):
         state['paused_seconds'] = state.get('paused_seconds',0)+max(0,(datetime.now(timezone.utc)-datetime.fromisoformat(state.pop('waiting_since'))).total_seconds())
-    state["status"]="running"; state.pop("error_type",None); state.pop("stop_reason",None); persist()
+    state["status"]="running"; state.pop("error_type",None); state.pop("stop_reason",None)
+    state.pop('failure_reason',None);state.pop('finished_at',None);persist()
     def enqueue(url,track,priority=False,route="vacancy"):
         if url not in {x["url"] for x in state["queue"]}:
             item={"url":url,"track":track,"route":route}

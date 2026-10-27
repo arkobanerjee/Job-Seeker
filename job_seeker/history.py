@@ -9,7 +9,9 @@ def run_history(root):
         result_path=checkpoint.parent/'result.json'
         result=json.loads(result_path.read_text(encoding='utf-8')) if result_path.exists() else {}
         rows.append({'run_id':state['run_id'],'status':state['status'],'started_at':state.get('started_at'),
-            'finished_at':result.get('finished_at'),'findings':len(state.get('findings',[])),
+            'finished_at':state.get('finished_at') or result.get('finished_at'),'findings':len(state.get('findings',[])),
+            'updated_at':state.get('updated_at'),'execution_id':state.get('execution_id'),
+            'failure_reason':state.get('failure_reason'),
             'searches':state.get('searches',0),'pages':state.get('fetches',0),'model_calls':state.get('model_calls',0),
             'error_type':state.get('error_type'),'notification_error':result.get('notification_error'),
             'mode':state.get('mode') or ('monitor' if state.get('config',{}).get('monitoring',{}).get('enabled') else 'discovery'),
