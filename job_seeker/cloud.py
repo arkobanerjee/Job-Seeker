@@ -119,6 +119,22 @@ def bootstrap():
         cloud.sync()
         cloud.settings()
 
+def record_cloud_failure(root,before,resume,exc):
+    """Retain an initial checkpoint failure without exposing exception payloads."""
+    from datetime import datetime,timezone
+    from .research import write_json
+    import re
+    receipt=re.fullmatch(r'Cloud request failed: HTTP (\d{3})',str(exc))
+    failure=('Publishing progress failed (HTTP '+receipt.group(1)+').' if receipt else
+             'The worker could not save or publish its progress.')+' Saved evidence is retained. Inspect the execution log before continuing.'
+    for checkpoint in (root/'runs').glob('*/checkpoint.json'):
+        if checkpoint.parent.name in before and checkpoint.parent.name!=resume:continue
+        state=json.loads(checkpoint.read_text(encoding='utf-8'))
+        if state.get('status')!='running':continue
+        state.update(status='failed',error_type=type(exc).__name__,finished_at=datetime.now(timezone.utc).isoformat(),failure_reason=failure)
+        write_json(checkpoint,state)
+
+
 def run_cloud(resume=None,monitor=False,scheduled=False,operation="discovery"):
     # Only the serialized GitHub workflow may own this state. No parallel local writes.
     if os.getenv('GITHUB_ACTIONS')!='true': raise ValueError('Cloud worker runs through the serialized GitHub Actions workflow')
@@ -172,8 +188,21 @@ def run_cloud(resume=None,monitor=False,scheduled=False,operation="discovery"):
     for ident,decision in cloud.request('decisions').items():
         if ident in known: catalog.decide(ident,decision['decision'],decision.get('note',''))
     from .runner import run
-    folder,result=run(resume=resume,operation=operation,on_checkpoint=cloud.sync,control=lambda ident:cloud.request("control/"+ident).get("action","run"))
-    cloud.sync()
+    before={p.parent.name for p in (ROOT/'runs').glob('*/checkpoint.json')}
+    try:
+        folder,result=run(resume=resume,operation=operation,on_checkpoint=cloud.sync,control=lambda ident:cloud.request("control/"+ident).get("action","run"))
+        cloud.sync()
+    except Exception as exc:
+        # Initial/final checkpoint failures occur outside the research loop's handler.
+        # Publish a safe failure receipt independently of optional evaluation uploads.
+        record_cloud_failure(ROOT,before,resume,exc)
+        try:cloud._request('state','PUT',pack(),True)
+        except Exception:pass
+        try:
+            from .history import run_history
+            cloud._request('runs','PUT',run_history(ROOT/'runs'))
+        except Exception:pass
+        raise
     if scheduled: cloud.request('monitor-status','PUT',{'status':result['status'],'run_id':result['run_id']})
     return folder,result
 
